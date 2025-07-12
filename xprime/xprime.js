@@ -137,7 +137,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     if (isSeriesOrMovieForStreams(url) === "series") {
         const match = url.match(/xprime\.tv\/watch\/([^?]+)\/(\d+)\/(\d+)/);
@@ -297,13 +297,33 @@ async function extractStreamUrl(url) {
             }
         }
 
+        const subtitleTrackResponse = await soraFetch(`https://sub.wyzie.ru/search?id=${id}&season=${season}&episode=${episode}`);
+        const subtitleTrackData = await subtitleTrackResponse.json();
+
+        let subtitleTrack = subtitleTrackData.find(track =>
+            track.display.includes('English') && (track.encoding === 'ASCII' || track.encoding === 'UTF-8')
+        );
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP1252'));
+        }
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP1250'));
+        }
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP850'));
+        }
+
+        subtitles = subtitleTrack ? subtitleTrack.url : '';
+
         const result = {
             streams,
             subtitles
         };
 
-        console.log('Result:', result);
-
+        console.log('Result: ' + JSON.stringify(result));
         return JSON.stringify(result);
     } else if (isSeriesOrMovieForStreams(url) === "movie") {
         const match = url.match(/xprime\.tv\/watch\/([^?]+)/);
@@ -465,18 +485,33 @@ async function extractStreamUrl(url) {
             }
         }
 
-        // streams.push({
-        //     title: "BONUS (4K only external players)",
-        //     streamUrl: `https://kendrickl-3amar.site/${id}/master.m3u8`,
-        //     headers: { "Referer": "https://xprime.tv/" }
-        // });
+        const subtitleTrackResponse = await soraFetch(`https://sub.wyzie.ru/search?id=${id}`);
+        const subtitleTrackData = await subtitleTrackResponse.json();
+
+        let subtitleTrack = subtitleTrackData.find(track =>
+            track.display.includes('English') && (track.encoding === 'ASCII' || track.encoding === 'UTF-8')
+        );
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP1252'));
+        }
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP1250'));
+        }
+
+        if (!subtitleTrack) {
+            subtitleTrack = subtitleTrackData.find(track => track.display.includes('English') && (track.encoding === 'CP850'));
+        }
+
+        subtitles = subtitleTrack ? subtitleTrack.url : '';
 
         const result = {
             streams,
             subtitles
         };
 
-        console.log('Result:', result);
+        console.log('Result: ' + JSON.stringify(result));
         return JSON.stringify(result);
     } else if (isSeriesOrMovieForStreams(url) === "unknown") {
         console.log('Unknown URL format: ' + url);
