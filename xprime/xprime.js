@@ -137,7 +137,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     if (isSeriesOrMovieForStreams(url) === "series") {
         const match = url.match(/xprime\.tv\/watch\/([^?]+)\/(\d+)\/(\d+)/);
