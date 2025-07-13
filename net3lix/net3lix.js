@@ -26,10 +26,10 @@ async function searchResults(keyword) {
             }
         });
 
-        console.log('Transformed Results:', transformedResults);
+        console.log('Transformed Results: ' + transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log('Fetch error in searchResults:', error);
+        console.log('Fetch error in searchResults:' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -65,13 +65,13 @@ async function extractDetails(url) {
                 airdate: `Aired: ${data.first_air_date ? data.first_air_date : 'Unknown'}`
             }];
 
-            console.log(transformedResults);
+            console.log(JSON.stringify(transformedResults));
             return JSON.stringify(transformedResults);
         } else {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Duration: Unknown',
@@ -125,19 +125,19 @@ async function extractEpisodes(url) {
                 }
             }
             
-            console.log('All Episodes:', allEpisodes);
+            console.log('All Episodes: ' + JSON.stringify(allEpisodes));
             return JSON.stringify(allEpisodes);
         } else {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        console.log('Fetch error in extractEpisodes:', error);
+        console.log('Fetch error in extractEpisodes: ' + error);
         return JSON.stringify([]);
     }    
 }
 
 // searchResults('One piece');
-extractDetails('https://net3lix.world/watch/tv/37854/1/1');
+// extractDetails('https://net3lix.world/watch/tv/37854/1/1');
 // extractEpisodes('https://net3lix.world/watch/tv/37854/1/1');
 // extractStreamUrl('https://net3lix.world/watch/tv/37854/2/65');
 
@@ -232,17 +232,24 @@ async function extractStreamUrl(url) {
             subtitles: firstSubtitle ? firstSubtitle.url : ""
         }
 
-        console.log('Result:', result);
+        console.log('Result: ' + JSON.stringify(result));
         return JSON.stringify(result);
     } catch (error) {
-        console.error('extractStreamUrl error:', error);
-        return null;
+        console.error('extractStreamUrl error: ' + error);
+        return "";
     }
 }
 
-async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+async function soraFetch(url, options = { headers: {}, method: 'GET', body: null, encoding: 'utf-8' }) {
     try {
-        return await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+        return await fetchv2(
+            url,
+            options.headers ?? {},
+            options.method ?? 'GET',
+            options.body ?? null,
+            true,
+            options.encoding ?? 'utf-8'
+        );
     } catch(e) {
         try {
             return await fetch(url, options);
