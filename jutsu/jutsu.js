@@ -127,7 +127,12 @@ async function extractStreamUrl(url) {
         streams.push({
             title: match[2],
             streamUrl: match[1],
-            headers: {}
+            headers: {
+                "Referer": "https://jut.su/",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0",
+                "Accept": "video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5",
+                "Range": "bytes=0-"
+            }
         });
     }
 
