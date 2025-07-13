@@ -13,15 +13,11 @@ async function searchResults(keyword) {
         const response = await soraFetch(url, {
             method: "POST",
             headers,
-            body: `ajax_load=yes&start_from_page=1&show_search=${keyword}&anime_of_user=`
+            body: `ajax_load=yes&start_from_page=1&show_search=${keyword}&anime_of_user=`,
+            encoding: `windows-1251`
         });
 
-        const buffer = await response.arrayBuffer();
-
-        const decoder = new TextDecoder("windows-1251");
-        const html = decoder.decode(buffer);
-
-        console.log(html);
+        const html = await response.text();
 
         let results = [];
 
@@ -44,7 +40,7 @@ async function searchResults(keyword) {
     }
 }
 
-searchResults('one piece');
+// searchResults('one piece');
 // extractDetails('https://jut.su/onepuunchman/');
 // extractEpisodes('https://jut.su/onepuunchman/');
 // extractStreamUrl("https://jut.su/onepuunchman/season-1/episode-1.html");
@@ -52,10 +48,8 @@ searchResults('one piece');
 async function extractDetails(url) {
     const results = [];
 
-    const response = await soraFetch(url);
-    const buffer = await response.arrayBuffer();
-    const decoder = new TextDecoder("windows-1251");
-    const html = decoder.decode(buffer);
+    const response = await soraFetch(url, { encoding: 'windows-1251' });
+    const html = await response.text();
 
     const descriptionMatch = html.match(
         /<p class="under_video[^>]*">[\s\S]*?<span>([\s\S]*?)<\/span>/
@@ -104,10 +98,8 @@ async function extractDetails(url) {
 async function extractEpisodes(url) {
     const results = [];
 
-    const response = await soraFetch(url);
-    const buffer = await response.arrayBuffer();
-    const decoder = new TextDecoder("windows-1251");
-    const html = decoder.decode(buffer);
+    const response = await soraFetch(url, { encoding: 'windows-1251' });
+    const html = await response.text();
 
     const regex = /<a href="([^"]+?\/episode-\d+\.html)"[^>]*>\s*<i>[^<]*<\/i>(\d+)\s+серия<\/a>/g;
 
@@ -124,12 +116,8 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    const response = await soraFetch(url);
-    const buffer = await response.arrayBuffer();
-    const decoder = new TextDecoder("windows-1251");
-    const html = decoder.decode(buffer);
-
-    console.log(html);
+    const response = await soraFetch(url, { encoding: 'windows-1251' });
+    const html = await response.text();
 
     let streams = [];
 
@@ -152,9 +140,16 @@ async function extractStreamUrl(url) {
     return JSON.stringify(results);
 }
 
-async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+async function soraFetch(url, options = { headers: {}, method: 'GET', body: null, encoding: 'utf-8' }) {
     try {
-        return await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+        return await fetchv2(
+            url,
+            options.headers ?? {},
+            options.method ?? 'GET',
+            options.body ?? null,
+            true,
+            options.encoding ?? 'utf-8'
+        );
     } catch(e) {
         try {
             return await fetch(url, options);
