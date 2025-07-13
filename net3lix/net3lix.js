@@ -65,6 +65,7 @@ async function extractDetails(url) {
                 airdate: `Aired: ${data.first_air_date ? data.first_air_date : 'Unknown'}`
             }];
 
+            console.log(transformedResults);
             return JSON.stringify(transformedResults);
         } else {
             throw new Error("Invalid URL format");
@@ -136,7 +137,7 @@ async function extractEpisodes(url) {
 }
 
 // searchResults('One piece');
-// extractDetails('https://net3lix.world/watch/tv/37854/1/1');
+extractDetails('https://net3lix.world/watch/tv/37854/1/1');
 // extractEpisodes('https://net3lix.world/watch/tv/37854/1/1');
 // extractStreamUrl('https://net3lix.world/watch/tv/37854/2/65');
 

@@ -10,10 +10,10 @@ async function searchResults(keyword) {
             "X-Requested-With": "XMLHttpRequest",
         };
 
-        const response = await fetch(url, {
+        const response = await sorafetch(url, {
             method: "POST",
             headers,
-            body: `ajax_load=yes&start_from_page=1&show_search=${keyword}`
+            body: `ajax_load=yes&start_from_page=1&show_search=${keyword}&anime_of_user=`
         });
 
         const buffer = await response.arrayBuffer();
@@ -36,7 +36,7 @@ async function searchResults(keyword) {
             });
         }
 
-        console.log(JSON.stringify(results));
+        console.log(results);
         return JSON.stringify(results);
     } catch (error) {
         console.log('Fetch error in searchResults: ' + error);
@@ -44,7 +44,7 @@ async function searchResults(keyword) {
     }
 }
 
-// searchResults('one');
+searchResults('one piece');
 // extractDetails('https://jut.su/onepuunchman/');
 // extractEpisodes('https://jut.su/onepuunchman/');
 // extractStreamUrl("https://jut.su/onepuunchman/season-1/episode-1.html");
