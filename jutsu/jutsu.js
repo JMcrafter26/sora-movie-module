@@ -10,7 +10,7 @@ async function searchResults(keyword) {
             "X-Requested-With": "XMLHttpRequest",
         };
 
-        const response = await sorafetch(url, {
+        const response = await soraFetch(url, {
             method: "POST",
             headers,
             body: `ajax_load=yes&start_from_page=1&show_search=${keyword}&anime_of_user=`
