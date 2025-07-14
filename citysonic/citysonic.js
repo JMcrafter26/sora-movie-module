@@ -324,18 +324,32 @@ async function soraFetch(url, options = { headers: {}, method: 'GET', body: null
 /////////////////////////////////////////////////////////////////////////////////////
 
 async function getWorkingKey(testIds) {
-	// try {
-	// 	const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
-	// 	const key1 = (await res1.text()).trim();
+	try {
+		const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
+		const key = (await res1.text()).trim();
 
-	// 	for (let i = 0; i < 3; i++) {
-	// 		const test1 = await getStreamSource(testIds[i], key1);
-	// 		console.log("Testing key 1:" + key1);
-	// 		if (test1 && test1.sources) return key1;
-	// 	}
-	// } catch (e) {
-	// 	console.log("Key 1 failed");
-	// }
+		const sourceId = testIds[0]; // Only test the first ID
+		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+
+		console.log("Testing key:", key);
+		if (streamData && streamData.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + sourceId);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
+
+			if (streamId) _keyCache.set(streamId, key);
+
+			return {
+				key: key,
+				streamData: streamData
+			};
+		}
+	} catch (e) {
+		console.log("Key 1 failed");
+	}
 
 	try {
 		const res = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
@@ -364,46 +378,88 @@ async function getWorkingKey(testIds) {
 		console.log("Key fetch or test failed:", e);
 	}
 
-	// try {
-	// 	const res3 = await soraFetch('https://justarion.github.io/keys/e1-player/src/data/keys.json');
-	// 	const json3 = await res3.json();
-	// 	const key3 = json3.vidstr.anime.key;
+	try {
+		const res3 = await soraFetch('https://justarion.github.io/keys/e1-player/src/data/keys.json');
+		const json3 = await res3.json();
+		const key = json3.vidstr.anime.key;
 
-	// 	for (let i = 0; i < 3; i++) {
-	// 		const test1 = await getStreamSource(testIds[i], key3);
-	// 		console.log("Testing key 3:" + key3);
-	// 		if (test1 && test1.sources) return key3;
-	// 	}
-	// } catch (e) {
-	// 	console.log("Key 3 failed");
-	// }
+		const sourceId = testIds[0]; // Only test the first ID
+		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
 
-	// try {
-	// 	const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
-	// 	const json4 = await res4.json();
-	// 	const key4 = json4.vidstr;
+		console.log("Testing key:", key);
+		if (streamData && streamData.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + sourceId);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
 
-	// 	for (let i = 0; i < 3; i++) {
-	// 		const test1 = await getStreamSource(testIds[i], key4);
-	// 		console.log("Testing key 4:" + key4);
-	// 		if (test1 && test1.sources) return key4;
-	// 	}
-	// } catch (e) {
-	// 	console.log("Key 4 failed");
-	// }
+			if (streamId) _keyCache.set(streamId, key);
 
-	// try {
-	// 	const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
-	// 	const key5 = (await res5.text()).trim();
+			return {
+				key: key,
+				streamData: streamData
+			};
+		}
+	} catch (e) {
+		console.log("Key 3 failed");
+	}
 
-	// 	for (let i = 0; i < 3; i++) {
-	// 		const test1 = await getStreamSource(testIds[i], key5);
-	// 		console.log("Testing key 5:" + key5);
-	// 		if (test1 && test1.sources) return key5;
-	// 	}
-	// } catch (e) {
-	// 	console.log("Key 5 failed");
-	// }
+	try {
+		const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
+		const json4 = await res4.json();
+		const key = json4.vidstr;
+
+		const sourceId = testIds[0]; // Only test the first ID
+		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+
+		console.log("Testing key:", key);
+		if (streamData && streamData.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + sourceId);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
+
+			if (streamId) _keyCache.set(streamId, key);
+
+			return {
+				key: key,
+				streamData: streamData
+			};
+		}
+	} catch (e) {
+		console.log("Key 4 failed");
+	}
+
+	try {
+		const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
+		const key = (await res5.text()).trim();
+
+		const sourceId = testIds[0]; // Only test the first ID
+		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+
+		console.log("Testing key:", key);
+		if (streamData && streamData.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + sourceId);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
+
+			if (streamId) _keyCache.set(streamId, key);
+
+			return {
+				key: key,
+				streamData: streamData
+			};
+		}
+	} catch (e) {
+		console.log("Key 5 failed");
+	}
 
 	return null;
 }
