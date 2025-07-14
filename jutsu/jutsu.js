@@ -43,7 +43,7 @@ async function searchResults(keyword) {
 // searchResults('one piece');
 // extractDetails('https://jut.su/onepuunchman/');
 // extractEpisodes('https://jut.su/onepuunchman/');
-// extractStreamUrl("https://jut.su/onepuunchman/season-1/episode-1.html");
+extractStreamUrl("https://jut.su/onepuunchman/season-1/episode-1.html");
 
 async function extractDetails(url) {
     const results = [];
@@ -126,7 +126,7 @@ async function extractStreamUrl(url) {
     while ((match = regex.exec(html)) !== null) {
         streams.push({
             title: match[2],
-            streamUrl: `https://jut-proxy.vercel.app/api/proxy?url=${match[1]}`,
+            streamUrl: `https://jut-proxy.onrender.com/proxy?url=${encodeURIComponent(match[1])}`,
             headers: {
                 // "Referer": "https://jut.su/",
                 // "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0",
