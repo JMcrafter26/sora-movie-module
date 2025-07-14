@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://citysonic.tv/tv/")) {
@@ -291,7 +291,7 @@ async function extractStreamUrl(url) {
 // searchResults("One piece");
 
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
-extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
+// extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
 
 // extractDetails(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
 // extractEpisodes(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
