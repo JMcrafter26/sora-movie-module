@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://citysonic.tv/tv/")) {
@@ -185,23 +185,22 @@ async function extractStreamUrl(url) {
 
             if (!ids.length) throw new Error("No ids found");
 
-            const key = await getWorkingKey(ids);
+            const { key, streamData } = await getWorkingKey(ids);
             if (!key) throw new Error("No working decryption key found");
 
             let streams = [];
             let subtitles = "";
 
             for (let i = 1; i < ids.length; i++) {
-                const streamData = await getStreamSource(ids[i], key, false);
-                if (!streamData) continue;
-
                 const hlsStream = streamData.sources?.find(src => src.type === "hls");
                 if (hlsStream?.file) {
                     if (i == 1) {
                         streams.push("AKCloud");
                     } else if (i == 2) {
                         streams.push("MegaCloud");
-                    }
+                    } else if (i == 3) {
+						streams.push("UpCloud");
+					}
 
                     streams.push(hlsStream.file);
                 }
@@ -245,22 +244,21 @@ async function extractStreamUrl(url) {
 
             if (!ids.length) throw new Error("No ids found");
 
-            const key = await getWorkingKey(ids);
+            const { key, streamData } = await getWorkingKey(ids);
             if (!key) throw new Error("No working decryption key found");
 
             let streams = [];
             let subtitles = "";
 
             for (let i = 1; i < ids.length; i++) {
-                const streamData = await getStreamSource(ids[i], key, false);
-                if (!streamData) continue;
-
                 const hlsStream = streamData.sources?.find(src => src.type === "hls");
                 if (hlsStream?.file) {
                     if (i == 1) {
                         streams.push("AKCloud");
                     } else if (i == 2) {
                         streams.push("MegaCloud");
+					} else if (i == 3) {
+						streams.push("UpCloud");
 					}
 
                     streams.push(hlsStream.file);
@@ -291,7 +289,7 @@ async function extractStreamUrl(url) {
 // searchResults("One piece");
 
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
-// extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
+extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
 
 // extractDetails(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
 // extractEpisodes(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
@@ -340,16 +338,30 @@ async function getWorkingKey(testIds) {
 	// }
 
 	try {
-		const res2 = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
-		const key2 = (await res2.text()).trim();
+		const res = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
+		const key = (await res.text()).trim();
 
-		for (let i = 0; i < 3; i++) {
-			const test1 = await getStreamSource(testIds[i], key2);
-			console.log("Testing key 2:" + key2);
-			if (test1 && test1.sources) return key2;
+		const sourceId = testIds[0]; // Only test the first ID
+		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+
+		console.log("Testing key:", key);
+		if (streamData && streamData.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + sourceId);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
+
+			if (streamId) _keyCache.set(streamId, key);
+
+			return {
+				key: key,
+				streamData: streamData
+			};
 		}
 	} catch (e) {
-		console.log("Key 2 failed");
+		console.log("Key fetch or test failed:", e);
 	}
 
 	// try {
@@ -397,7 +409,7 @@ async function getWorkingKey(testIds) {
 }
 
 
-async function getStreamSource(sourceId, key, isSub) {
+async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 	try {
 		console.log("Using key: " + key);
 
@@ -419,11 +431,12 @@ async function getStreamSource(sourceId, key, isSub) {
 			'Referer': 'https://videostr.net/',
 		}
 
-		const res2 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/${streamId}?z=`, { headers });
-		const html = await res2.text();
-
-		const _key = extractKeyFromHtml(html);
-		console.log("_KEY:", _key);
+		if (!skipKeyRetry) {
+			_key = await getCachedKeyForStreamId(streamId); // retry logic
+		} else {
+			_key = await getCachedKeyForStreamId(streamId, 1); // only 1 attempt
+		}
+		if (!_key) throw new Error("Failed to get _k key");
 
 		const res3 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/getSources?id=${streamId}&_k=${_key}`, { headers });
 		const json2 = await res3.json();
@@ -482,6 +495,56 @@ function extractKeyFromHtml(html) {
 
 	// If all fail
 	return null;
+}
+
+const _keyCache = new Map();
+
+async function getCachedKeyForStreamId(streamId, maxAttempts = 3) {
+	if (_keyCache.has(streamId)) {
+		console.log(`Using cached key for ${streamId}`);
+		return _keyCache.get(streamId);
+	}
+
+	const url = `https://videostr.net/embed-1/v3/e-1/${streamId}?z=`;
+	const headers = {
+		'X-Requested-With': 'XMLHttpRequest',
+		'Referer': 'https://videostr.net/',
+	};
+
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			console.log(`Fetching key for streamId: ${streamId}, attempt ${attempt}`);
+
+			const res = await soraFetch(url, { headers });
+			if (!res) throw new Error("Fetch failed");
+
+			const html = await res.text();
+			const key = extractKeyFromHtml(html);
+
+			if (key) {
+				console.log(`_KEY found: ${key}`);
+				_keyCache.set(streamId, key);
+				return key;
+			} else {
+				console.warn(`_KEY not found in HTML (attempt ${attempt})`);
+			}
+		} catch (err) {
+			console.warn(`Error fetching key (attempt ${attempt}): ${err.message}`);
+		}
+	}
+
+	console.error(`Failed to fetch key after ${maxAttempts} attempts for streamId: ${streamId}`);
+	return null;
+}
+
+function extractStreamIdFromLink(streamData) {
+	try {
+		const link = streamData.sources?.[0]?.file || "";
+		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+		return match ? match[1] : null;
+	} catch {
+		return null;
+	}
 }
 
 function decryptStream(encrypted, key) {
