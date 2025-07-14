@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://citysonic.tv/tv/")) {
@@ -192,7 +192,7 @@ async function extractStreamUrl(url) {
             let subtitles = "";
 
             for (let i = 1; i < ids.length; i++) {
-                const streamData = await getStreamSource(ids[i], key, true);
+                const streamData = await getStreamSource(ids[i], key, false);
                 if (!streamData) continue;
 
                 const hlsStream = streamData.sources?.find(src => src.type === "hls");
@@ -252,7 +252,7 @@ async function extractStreamUrl(url) {
             let subtitles = "";
 
             for (let i = 1; i < ids.length; i++) {
-                const streamData = await getStreamSource(ids[i], key, true);
+                const streamData = await getStreamSource(ids[i], key, false);
                 if (!streamData) continue;
 
                 const hlsStream = streamData.sources?.find(src => src.type === "hls");
@@ -291,7 +291,7 @@ async function extractStreamUrl(url) {
 // searchResults("One piece");
 
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
-// extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
+extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
 
 // extractDetails(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
 // extractEpisodes(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
@@ -370,15 +370,12 @@ async function getWorkingKey(testIds) {
 		const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
 		const json4 = await res4.json();
 		const key4 = json4.vidstr;
-		const test1 = await getStreamSource(testIds[0], key4);
-		console.log("Testing key 4:" + key4);
-		if (test1 && test1.sources) return key4;
-		const test2 = await getStreamSource(testIds[1], key4);
-		console.log("Testing key 4:" + key4);
-		if (test2 && test2.sources) return key4;
-		const test3 = await getStreamSource(testIds[2], key4);
-		console.log("Testing key 4:" + key4);
-		if (test3 && test3.sources) return key4;
+
+		for (let i = 0; i < 3; i++) {
+			const test1 = await getStreamSource(testIds[i], key4);
+			console.log("Testing key 4:" + key4);
+			if (test1 && test1.sources) return key4;
+		}
 	} catch (e) {
 		console.log("Key 4 failed");
 	}
@@ -425,14 +422,13 @@ async function getStreamSource(sourceId, key, isSub) {
 		const res2 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/${streamId}?z=`, { headers });
 		const html = await res2.text();
 
-		const dpiMatch = html.match(/<div[^>]+data-dpi="([^"]+)"/);
-		const _key = dpiMatch ? dpiMatch[1] : null;
-		console.log("_KEY: " + _key);
+		const _key = extractKeyFromHtml(html);
+		console.log("_KEY:", _key);
 
 		const res3 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/getSources?id=${streamId}&_k=${_key}`, { headers });
 		const json2 = await res3.json();
 		const encrypted = json2.sources;
-		console.log("Encrypted Sources:" + encrypted);
+		console.log("Encrypted Sources: " + JSON.stringify(encrypted));
 
 		if (!encrypted) throw new Error("Encrypted stream not found");
 
@@ -449,10 +445,10 @@ async function getStreamSource(sourceId, key, isSub) {
 			}
 		}
 
-		const sources = decryptStream(encrypted, key);
-		if (!sources) return null;
+		// const sources = decryptStream(encrypted, key);
+		// if (!sources) return null;
 
-		result.sources = sources;
+		result.sources = encrypted;
 		return result;
 	} catch (error) {
 		console.log("Error in getStreamSource: " + error);
@@ -460,6 +456,33 @@ async function getStreamSource(sourceId, key, isSub) {
 	}
 }
 
+function extractKeyFromHtml(html) {
+	// 1. Try data-dpi
+	let match = html.match(/<div[^>]+data-dpi="([^"]+)"/i);
+	if (match) return match[1];
+
+	// 2. Try window._xy_ws = "..."
+	match = html.match(/window\._xy_ws\s*=\s*"([^"]+)"/i);
+	if (match) return match[1];
+
+	// 3. Try <!-- _is_th:.... -->
+	match = html.match(/<!--\s*_is_th:([a-zA-Z0-9+/=]+)\s*-->/i);
+	if (match) return match[1];
+
+	// 4. Try meta[name="_gg_fb"]
+	match = html.match(/<meta\s+name=["']_gg_fb["']\s+content=["']([^"']+)["']/i);
+	if (match) return match[1];
+
+	// 5. Try window._lk_db (use one of the values, or concatenate if needed)
+	match = html.match(/window\._lk_db\s*=\s*{[^}]*x:\s*"([^"]+)",\s*y:\s*"([^"]+)",\s*z:\s*"([^"]+)"[^}]*}/i);
+	if (match) {
+		// You can choose just `x`, or concat `x + y + z` depending on usage
+		return match[1] + match[2] + match[3];
+	}
+
+	// If all fail
+	return null;
+}
 
 function decryptStream(encrypted, key) {
 	console.log("Decrypting sources with key: " + key);
