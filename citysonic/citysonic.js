@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://citysonic.tv/tv/")) {
@@ -261,7 +261,7 @@ async function extractStreamUrl(url) {
                         streams.push("AKCloud");
                     } else if (i == 2) {
                         streams.push("MegaCloud");
-                    }
+					}
 
                     streams.push(hlsStream.file);
                 }
@@ -291,7 +291,7 @@ async function extractStreamUrl(url) {
 // searchResults("One piece");
 
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
-extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
+// extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
 
 // extractDetails(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
 // extractEpisodes(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
@@ -326,18 +326,18 @@ async function soraFetch(url, options = { headers: {}, method: 'GET', body: null
 /////////////////////////////////////////////////////////////////////////////////////
 
 async function getWorkingKey(testIds) {
-	try {
-		const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
-		const key1 = (await res1.text()).trim();
+	// try {
+	// 	const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
+	// 	const key1 = (await res1.text()).trim();
 
-		for (let i = 0; i < 3; i++) {
-			const test1 = await getStreamSource(testIds[i], key1);
-			console.log("Testing key 1:" + key1);
-			if (test1 && test1.sources) return key1;
-		}
-	} catch (e) {
-		console.log("Key 1 failed");
-	}
+	// 	for (let i = 0; i < 3; i++) {
+	// 		const test1 = await getStreamSource(testIds[i], key1);
+	// 		console.log("Testing key 1:" + key1);
+	// 		if (test1 && test1.sources) return key1;
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 1 failed");
+	// }
 
 	try {
 		const res2 = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
@@ -352,46 +352,46 @@ async function getWorkingKey(testIds) {
 		console.log("Key 2 failed");
 	}
 
-	try {
-		const res3 = await soraFetch('https://justarion.github.io/keys/e1-player/src/data/keys.json');
-		const json3 = await res3.json();
-		const key3 = json3.vidstr.anime.key;
+	// try {
+	// 	const res3 = await soraFetch('https://justarion.github.io/keys/e1-player/src/data/keys.json');
+	// 	const json3 = await res3.json();
+	// 	const key3 = json3.vidstr.anime.key;
 
-		for (let i = 0; i < 3; i++) {
-			const test1 = await getStreamSource(testIds[i], key3);
-			console.log("Testing key 3:" + key3);
-			if (test1 && test1.sources) return key3;
-		}
-	} catch (e) {
-		console.log("Key 3 failed");
-	}
+	// 	for (let i = 0; i < 3; i++) {
+	// 		const test1 = await getStreamSource(testIds[i], key3);
+	// 		console.log("Testing key 3:" + key3);
+	// 		if (test1 && test1.sources) return key3;
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 3 failed");
+	// }
 
-	try {
-		const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
-		const json4 = await res4.json();
-		const key4 = json4.vidstr;
+	// try {
+	// 	const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
+	// 	const json4 = await res4.json();
+	// 	const key4 = json4.vidstr;
 
-		for (let i = 0; i < 3; i++) {
-			const test1 = await getStreamSource(testIds[i], key4);
-			console.log("Testing key 4:" + key4);
-			if (test1 && test1.sources) return key4;
-		}
-	} catch (e) {
-		console.log("Key 4 failed");
-	}
+	// 	for (let i = 0; i < 3; i++) {
+	// 		const test1 = await getStreamSource(testIds[i], key4);
+	// 		console.log("Testing key 4:" + key4);
+	// 		if (test1 && test1.sources) return key4;
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 4 failed");
+	// }
 
-	try {
-		const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
-		const key5 = (await res5.text()).trim();
+	// try {
+	// 	const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
+	// 	const key5 = (await res5.text()).trim();
 
-		for (let i = 0; i < 3; i++) {
-			const test1 = await getStreamSource(testIds[i], key5);
-			console.log("Testing key 5:" + key5);
-			if (test1 && test1.sources) return key5;
-		}
-	} catch (e) {
-		console.log("Key 5 failed");
-	}
+	// 	for (let i = 0; i < 3; i++) {
+	// 		const test1 = await getStreamSource(testIds[i], key5);
+	// 		console.log("Testing key 5:" + key5);
+	// 		if (test1 && test1.sources) return key5;
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 5 failed");
+	// }
 
 	return null;
 }
