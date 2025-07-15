@@ -157,7 +157,29 @@ async function extractStreamUrl(url) {
             const responseText = await soraFetch(apiUrl);
             const data = await responseText.json();
 
-            const streamUrl = data.sources.hlsUrl;
+            let streamUrl = "";
+
+            if (data.sources.mpeg4kUrl !== "") {
+                streamUrl = data.sources.mpeg4kUrl;
+            } else if (data.sources.mpeg2kUrl !== "") {
+                streamUrl = data.sources.mpeg2kUrl;
+            } else if (data.sources.mpegQhdUrl !== "") {
+                streamUrl = data.sources.mpegQhdUrl;
+            } else if (data.sources.mpegFullHdUrl !== "") {
+                streamUrl = data.sources.mpegFullHdUrl;
+            } else if (data.sources.mpegHighUrl !== "") {
+                streamUrl = data.sources.mpegHighUrl;
+            } else if (data.sources.mpegMediumUrl !== "") {
+                streamUrl = data.sources.mpegMediumUrl;
+            } else if (data.sources.mpegLowUrl !== "") {
+                streamUrl = data.sources.mpegLowUrl;
+            } else if (data.sources.mpegTinyUrl !== "") {
+                streamUrl = data.sources.mpegTinyUrl;
+            } else if (data.sources.mpegLowestUrl !== "") {
+                streamUrl = data.sources.mpegLowestUrl;
+            } else {
+                streamUrl = data.sources.hlsUrl;
+            }
 
             streams.push({
                 title: streamStudio !== "" && streamType !== "" ? `${streamStudio} (${streamType})` : 'Дубляж',
