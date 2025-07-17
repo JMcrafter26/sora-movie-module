@@ -287,7 +287,7 @@ async function extractStreamUrl(url) {
 }
 
 // searchResults("One piece");
-extractEpisodes("https://myflixerz.to/tv/one-piece-39514");
+// extractEpisodes("https://myflixerz.to/tv/one-piece-39514");
 // extractStreamUrl("https://myflixerz.to/tv/one-piece-39514/6021");
 
 // extractEpisodes("https://myflixerz.to/movie/one-piece-stampede-41520");
@@ -705,7 +705,7 @@ function decryptSwap(ciphertext, key) {
  * or `undefined` if any crucial step fails.
  */
 function runOne(_k, sourcesEncrypted) {
-    const baseKey = 'yJV20GQe0QAFgw2F4UHfMTtD1yfjKjskrgrpgAKjzp3OAqrqQ' + _k;
+    const baseKey = 'AaND3XizK1QoixkfwyJfztls3yx5LALK1XBbOgxiyolzVhE' + _k;
     let plaintext = Buffer.from(sourcesEncrypted, 'base64').toString('utf8');
 
     for (let i = 3; i > 0; i--) {
