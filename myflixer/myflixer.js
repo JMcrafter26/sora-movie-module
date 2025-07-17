@@ -525,6 +525,8 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 		} else {
 			const sources = decrypt(_key, encrypted);
 
+			console.log("Decrypted sources: " + JSON.stringify(sources));
+
 			result.sources = sources;
 			return result;
 		}
@@ -706,7 +708,10 @@ function decryptSwap(ciphertext, key) {
  */
 function runOne(_k, sourcesEncrypted) {
     const baseKey = 'AaND3XizK1QoixkfwyJfztls3yx5LALK1XBbOgxiyolzVhE' + _k;
-    let plaintext = Buffer.from(sourcesEncrypted, 'base64').toString('utf8');
+    let binaryString = atob(sourcesEncrypted);
+	let bytes = new Uint8Array([...binaryString].map(c => c.charCodeAt(0)));
+	let plaintext = new TextDecoder().decode(bytes);
+
 
     for (let i = 3; i > 0; i--) {
         const key = `${baseKey}${i}`;
