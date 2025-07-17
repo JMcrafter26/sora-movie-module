@@ -513,7 +513,7 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 			result.sources = encrypted;
 			return result;	
 		} else {
-			const sources = decrypt(_key, encrypted);
+			const sources = await decrypt(_key, encrypted);
 
 			result.sources = sources;
 			return result;
@@ -705,8 +705,11 @@ function base64ToUtf8(base64) {
  * @returns {string|undefined} The final decrypted plaintext string (JSON in this case),
  * or `undefined` if any crucial step fails.
  */
-function runOne(_k, sourcesEncrypted) {
-    const baseKey = 'yJV20GQe0QAFgw2F4UHfMTtD1yfjKjskrgrpgAKjzp3OAqrqQ' + _k;
+async function runOne(_k, sourcesEncrypted) {
+	const response = await soraFetch('https://ac-api.ofchaos.com/api/key/videostr');
+	const preKey = (await response.text()).trim();
+
+    const baseKey = preKey + _k;
     let plaintext = base64ToUtf8(sourcesEncrypted);
 
     for (let i = 3; i > 0; i--) {
@@ -761,8 +764,8 @@ function runOne(_k, sourcesEncrypted) {
  * @param {string} encryptedSource - The Base64 encoded string containing the data to decrypt.
  * @returns {object|undefined} The final decrypted JSON object, or `undefined` if any crucial step fails.
  */
-function decrypt(nonce, encryptedSource) {
-    const decrypted = runOne(nonce, encryptedSource);
+async function decrypt(nonce, encryptedSource) {
+    const decrypted = await runOne(nonce, encryptedSource);
 
     if (decrypted === undefined || decrypted === null) {
         console.error("Decryption process failed or returned no data.");
