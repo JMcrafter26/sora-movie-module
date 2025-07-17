@@ -287,12 +287,17 @@ async function extractStreamUrl(url) {
 }
 
 // searchResults("One piece");
-
 // extractEpisodes("https://myflixerz.to/tv/one-piece-39514");
 // extractStreamUrl("https://myflixerz.to/tv/one-piece-39514/6021");
 
 // extractEpisodes("https://myflixerz.to/movie/one-piece-stampede-41520");
-extractStreamUrl("https://myflixerz.to/movie/one-piece-stampede-41520");
+// extractStreamUrl("https://myflixerz.to/movie/one-piece-stampede-41520");
+
+
+
+// searchResults("Breaking bad");
+// extractEpisodes("https://myflixerz.to/tv/breaking-bad-39506");
+// extractStreamUrl("https://myflixerz.to/tv/breaking-bad-39506/7013");
 
 function decodeHtmlEntities(text) {
     return text
