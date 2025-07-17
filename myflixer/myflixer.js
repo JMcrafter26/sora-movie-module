@@ -287,7 +287,7 @@ async function extractStreamUrl(url) {
 }
 
 // searchResults("One piece");
-// extractEpisodes("https://myflixerz.to/tv/one-piece-39514");
+extractEpisodes("https://myflixerz.to/tv/one-piece-39514");
 // extractStreamUrl("https://myflixerz.to/tv/one-piece-39514/6021");
 
 // extractEpisodes("https://myflixerz.to/movie/one-piece-stampede-41520");
@@ -776,16 +776,6 @@ function decrypt(nonce, encryptedSource) {
         console.log("Raw decrypted text (before JSON parse):", plaintext);
         return null;
     }
-}
-
-function extractStreamIdFromLink(streamData) {
-	try {
-		const link = streamData.sources?.[0]?.file || "";
-		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-		return match ? match[1] : null;
-	} catch {
-		return null;
-	}
 }
 
 function decryptStream(encrypted, key) {

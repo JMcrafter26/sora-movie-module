@@ -233,7 +233,7 @@ async function extractStreamUrl(url) {
             const response = await soraFetch(url2);
             const html = await response.text();
 
-            const regex2 = /data-linkid="(\d+)"/g;
+            const regex2 = /data-id="(\d+)"/g;
             const ids = [];
             let match2;
                 while ((match2 = regex2.exec(html)) !== null) {
@@ -287,16 +287,8 @@ async function extractStreamUrl(url) {
 }
 
 // searchResults("One piece");
-
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
 // extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
-
-// extractDetails(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
-// extractEpisodes(`https://citysonic.tv/movie/watch-one-piece-stampede-movies-free-online-41520`);
-
-// searchResults("Naruto");
-
-// extractEpisodes("https://citysonic.tv/tv/watch-naruto-shippuden-movies-free-online-39540");
 
 function decodeHtmlEntities(text) {
     return text
@@ -517,8 +509,15 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 		// const sources = decryptStream(encrypted, key);
 		// if (!sources) return null;
 
-		result.sources = encrypted;
-		return result;
+		if (json2.encrypted === false) {
+			result.sources = encrypted;
+			return result;	
+		} else {
+			const sources = decrypt(_key, encrypted);
+
+			result.sources = sources;
+			return result;
+		}
 	} catch (error) {
 		console.log("Error in getStreamSource: " + error);
 		return null;
@@ -593,14 +592,180 @@ async function getCachedKeyForStreamId(streamId, maxAttempts = 3) {
 	return null;
 }
 
-function extractStreamIdFromLink(streamData) {
-	try {
-		const link = streamData.sources?.[0]?.file || "";
-		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-		return match ? match[1] : null;
-	} catch {
-		return null;
-	}
+/**
+ * Implements Java's String.hashCode() method.
+ * In JavaScript, bitwise operations on numbers implicitly convert them to 32-bit signed integers.
+ * The `| 0` at the end ensures the result is a 32-bit signed integer, mimicking Java's `int` type.
+ * @param {string} s - The input string.
+ * @returns {number} The Java-style hash code (32-bit signed integer).
+ */
+function javaStringHashcode(s) {
+    let h = 0;
+    if (s.length === 0) {
+        return 0;
+    }
+    for (let i = 0; i < s.length; i++) {
+        const char = s.charCodeAt(i);
+        h = (31 * h + char) | 0;
+    }
+    return h;
+}
+
+/**
+ * Decrypts a ciphertext using a modulo-based substitution cipher.
+ * This function mimics the behavior of a custom JavaScript linear congruential generator (LCG)
+ * for generating the pseudo-random numbers that determine the character shifts.
+ * @param {string} ciphertext - The string to decrypt.
+ * @param {string} key - The key used for seed generation.
+ * @returns {string} The decrypted plaintext.
+ */
+function decryptMod(ciphertext, key) {
+    let seed = javaStringHashcode(key);
+
+    const xs = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", "=", ">", "?", "@", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "{", "|", "}", "~"];
+    const ys = [];
+    const N = xs.length;
+
+    for (const char of ciphertext) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+
+        const a = xs.indexOf(char);
+        if (a === -1) {
+            console.warn(`Character '${char}' not found in 'xs' alphabet during decryptMod.`);
+            ys.push(char);
+            continue;
+        }
+        const b = seed % N;
+        const y = xs[(a - b + N) % N];
+        ys.push(y);
+    }
+
+    return ys.join('');
+}
+
+/**
+ * Decrypts a ciphertext using a permutation/swap-based substitution cipher.
+ * The permutation (shuffling of the alphabet) is determined by a PRNG sequence
+ * derived from the key, effectively reversing a previous shuffle.
+ * @param {string} ciphertext - The string to decrypt.
+ * @param {string} key - The key used for seed generation.
+ * @returns {string} The decrypted plaintext.
+ */
+function decryptSwap(ciphertext, key) {
+    let seed = javaStringHashcode(key);
+
+    const xs = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", "=", ">", "?", "@", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "{", "|", "}", "~"];
+    const ys = [...xs];
+    const N = xs.length;
+
+    for (let i = N; i > 1; i--) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+
+        const a = i - 1;
+        const b = seed % i;
+
+        [ys[a], ys[b]] = [ys[b], ys[a]];
+    }
+
+    const lookupTable = new Map();
+    for (let i = 0; i < N; i++) {
+        lookupTable.set(ys[i], xs[i]);
+    }
+
+    const plaintextChars = [];
+    for (const char of ciphertext) {
+        if (!lookupTable.has(char)) {
+            console.warn(`Character '${char}' not found in lookup table during decryptSwap.`);
+            plaintextChars.push(char);
+            continue;
+        }
+        plaintextChars.push(lookupTable.get(char));
+    }
+
+    return plaintextChars.join('');
+}
+
+/**
+ * Runs the complete decryption process based on the provided encrypted source and a key part.
+ * This function consolidates the sequential decryption steps observed in the original
+ * JavaScript player logic (from which the Python script was derived).
+ * @param {string} _k - A dynamic part of the decryption key.
+ * @param {string} sourcesEncrypted - The Base64 encoded string containing the data to decrypt.
+ * @returns {string|undefined} The final decrypted plaintext string (JSON in this case),
+ * or `undefined` if any crucial step fails.
+ */
+function runOne(_k, sourcesEncrypted) {
+    const baseKey = 'yJV20GQe0QAFgw2F4UHfMTtD1yfjKjskrgrpgAKjzp3OAqrqQ' + _k;
+    let plaintext = Buffer.from(sourcesEncrypted, 'base64').toString('utf8');
+
+    for (let i = 3; i > 0; i--) {
+        const key = `${baseKey}${i}`;
+
+        plaintext = decryptMod(plaintext, key);
+
+        const idxChars = [];
+        for (let idx = 0; idx < key.length; idx++) {
+            idxChars.push({ char: key[idx], idx: idx });
+        }
+
+        const sortOrder = '0123456789' + 'aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ';
+        idxChars.sort((a, b) => {
+            return sortOrder.indexOf(a.char) - sortOrder.indexOf(b.char);
+        });
+
+        const N4 = Array(3).fill(0).map(() => Array(key.length).fill(' '));
+        let p_idx = 0;
+
+        for (const idxCharObj of idxChars) {
+            const originalIdx = parseInt(idxCharObj.idx, 10);
+
+            for (let T7 = 0; T7 < 3; T7++) {
+                N4[T7][originalIdx] = plaintext[p_idx];
+                p_idx += 1;
+            }
+        }
+        
+        plaintext = N4.map(row => row.join('')).join('');
+        plaintext = decryptSwap(plaintext, key);
+    }
+
+    const match = plaintext.match(/^0*(\d+)(.*)/);
+    if (!match) {
+        console.error("Could not parse plaintext length from decrypted string.");
+        return undefined;
+    }
+
+    const plaintextLen = parseInt(match[1], 10);
+    let plaintextStr = match[2];
+    plaintextStr = plaintextStr.substring(0, plaintextLen);
+
+    return plaintextStr;
+}
+
+/**
+ * Runs the complete decryption process based on the provided encrypted source and a key part.
+ * This function consolidates the sequential decryption steps observed in the original
+ * JavaScript player logic (from which the Python script was derived).
+ * @param {string} nonce - A dynamic part of the decryption key.
+ * @param {string} encryptedSource - The Base64 encoded string containing the data to decrypt.
+ * @returns {object|undefined} The final decrypted JSON object, or `undefined` if any crucial step fails.
+ */
+function decrypt(nonce, encryptedSource) {
+    const decrypted = runOne(nonce, encryptedSource);
+
+    if (decrypted === undefined || decrypted === null) {
+        console.error("Decryption process failed or returned no data.");
+        return null;
+    }
+
+    try {
+        const json = JSON.parse(decrypted);
+        return json;
+    } catch (e) {
+        console.error("Failed to parse decrypted string as JSON:", e.message);
+        console.log("Raw decrypted text (before JSON parse):", plaintext);
+        return null;
+    }
 }
 
 function decryptStream(encrypted, key) {
