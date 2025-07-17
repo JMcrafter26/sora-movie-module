@@ -697,6 +697,17 @@ function decryptSwap(ciphertext, key) {
     return plaintextChars.join('');
 }
 
+function base64ToUtf8(base64) {
+	const binary = atob(base64);
+	let utf8 = '';
+
+	for (let i = 0; i < binary.length; i++) {
+		utf8 += '%' + binary.charCodeAt(i).toString(16).padStart(2, '0');
+	}
+
+	return decodeURIComponent(utf8);
+}
+
 /**
  * Runs the complete decryption process based on the provided encrypted source and a key part.
  * This function consolidates the sequential decryption steps observed in the original
@@ -708,10 +719,7 @@ function decryptSwap(ciphertext, key) {
  */
 function runOne(_k, sourcesEncrypted) {
     const baseKey = 'AaND3XizK1QoixkfwyJfztls3yx5LALK1XBbOgxiyolzVhE' + _k;
-    let binaryString = atob(sourcesEncrypted);
-	let bytes = new Uint8Array([...binaryString].map(c => c.charCodeAt(0)));
-	let plaintext = new TextDecoder().decode(bytes);
-
+    let plaintext = base64ToUtf8(sourcesEncrypted);
 
     for (let i = 3; i > 0; i--) {
         const key = `${baseKey}${i}`;
