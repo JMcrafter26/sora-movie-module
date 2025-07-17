@@ -497,6 +497,7 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 
 		const res3 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/getSources?id=${streamId}&_k=${_key}`, { headers });
 		const json2 = await res3.json();
+
 		const encrypted = json2.sources;
 		console.log("Encrypted Sources: " + JSON.stringify(encrypted));
 
@@ -518,10 +519,15 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 		// const sources = decryptStream(encrypted, key);
 		// if (!sources) return null;
 
-		const sources = decrypt(_key, encrypted);
+		if (json2.encrypted === false) {
+			result.sources = encrypted;
+			return result;	
+		} else {
+			const sources = decrypt(_key, encrypted);
 
-		result.sources = sources;
-		return result;
+			result.sources = sources;
+			return result;
+		}
 	} catch (error) {
 		console.log("Error in getStreamSource: " + error);
 		return null;
