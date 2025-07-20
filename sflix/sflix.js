@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://sflix.to/tv/")) {
@@ -288,7 +288,7 @@ async function extractStreamUrl(url) {
 
 // searchResults("One piece");
 // extractEpisodes("https://sflix.to/tv/free-one-piece-hd-39514");
-// extractStreamUrl("https://sflix.to/tv/free-one-piece-hd-39514/6021");
+extractStreamUrl("https://sflix.to/tv/free-one-piece-hd-39514/6021");
 
 function decodeHtmlEntities(text) {
     return text
@@ -316,69 +316,69 @@ async function soraFetch(url, options = { headers: {}, method: 'GET', body: null
 /////////////////////////////////////////////////////////////////////////////////////
 
 async function getWorkingKey(testIds) {
-	try {
-		const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
-		const key = (await res1.text()).trim();
+	// try {
+	// 	const res1 = await soraFetch('https://api.lunaranime.ru/static/key.txt');
+	// 	const key = (await res1.text()).trim();
 
-		const sourceId = testIds[0]; // Only test the first ID
-		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+	// 	const sourceId = testIds[0]; // Only test the first ID
+	// 	const streamData = await getStreamSource(sourceId, key, false, true); // no retry
 
-		console.log("Testing key:", key);
-		if (streamData && streamData.sources) {
-			// Extract stream ID and cache it
-			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
-			const json1 = await res1.json();
-			const link = json1.link || "";
-			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-			const streamId = match ? match[1] : null;
+	// 	console.log("Testing key:", key);
+	// 	if (streamData && streamData.sources) {
+	// 		// Extract stream ID and cache it
+	// 		const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
+	// 		const json1 = await res1.json();
+	// 		const link = json1.link || "";
+	// 		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+	// 		const streamId = match ? match[1] : null;
 
-			if (streamId) _keyCache.set(streamId, key);
+	// 		if (streamId) _keyCache.set(streamId, key);
 
-			return {
-				key: key,
-				streamData: streamData
-			};
-		}
-	} catch (e) {
-		console.log("Key 1 failed");
-	}
+	// 		return {
+	// 			key: key,
+	// 			streamData: streamData
+	// 		};
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 1 failed");
+	// }
 
-	try {
-		const res = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
-		const key = (await res.text()).trim();
+	// try {
+	// 	const res = await soraFetch('https://raw.githubusercontent.com/itzzzme/megacloud-keys/refs/heads/main/key.txt');
+	// 	const key = (await res.text()).trim();
 
-		const sourceId = testIds[0]; // Only test the first ID
-		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+	// 	const sourceId = testIds[0]; // Only test the first ID
+	// 	const streamData = await getStreamSource(sourceId, key, false, true); // no retry
 
-		console.log("Testing key:", key);
-		if (streamData && streamData.sources) {
-			// Extract stream ID and cache it
-			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
-			const json1 = await res1.json();
-			const link = json1.link || "";
-			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-			const streamId = match ? match[1] : null;
+	// 	console.log("Testing key:", key);
+	// 	if (streamData && streamData.sources) {
+	// 		// Extract stream ID and cache it
+	// 		const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
+	// 		const json1 = await res1.json();
+	// 		const link = json1.link || "";
+	// 		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+	// 		const streamId = match ? match[1] : null;
 
-			if (streamId) _keyCache.set(streamId, key);
+	// 		if (streamId) _keyCache.set(streamId, key);
 
-			return {
-				key: key,
-				streamData: streamData
-			};
-		}
-	} catch (e) {
-		console.log("Key fetch or test failed:", e);
-	}
+	// 		return {
+	// 			key: key,
+	// 			streamData: streamData
+	// 		};
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key fetch or test failed:", e);
+	// }
 
 	try {
 		const res3 = await soraFetch('https://justarion.github.io/keys/e1-player/src/data/keys.json');
 		const json3 = await res3.json();
-		const key = json3.vidstr.anime.key;
+		const key = json3.streameeeeee.anime.key;
 
 		const sourceId = testIds[0]; // Only test the first ID
 		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
-
 		console.log("Testing key:", key);
+
 		if (streamData && streamData.sources) {
 			// Extract stream ID and cache it
 			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
@@ -392,6 +392,28 @@ async function getWorkingKey(testIds) {
 			return {
 				key: key,
 				streamData: streamData
+			};
+		}
+
+		const key2 = json3.streameeeeee.anime.key;
+
+		const sourceId2 = testIds[0]; // Only test the first ID
+		const streamData2 = await getStreamSource(sourceId2, key2, false, true); // no retry
+		console.log("Testing key:", key2);
+
+		if (streamData2 && streamData2.sources) {
+			// Extract stream ID and cache it
+			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId2);
+			const json1 = await res1.json();
+			const link = json1.link || "";
+			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+			const streamId = match ? match[1] : null;
+
+			if (streamId) _keyCache.set(streamId, key2);
+
+			return {
+				key: key2,
+				streamData: streamData2
 			};
 		}
 	} catch (e) {
@@ -426,32 +448,32 @@ async function getWorkingKey(testIds) {
 		console.log("Key 4 failed");
 	}
 
-	try {
-		const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
-		const key = (await res5.text()).trim();
+	// try {
+	// 	const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
+	// 	const key = (await res5.text()).trim();
 
-		const sourceId = testIds[0]; // Only test the first ID
-		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+	// 	const sourceId = testIds[0]; // Only test the first ID
+	// 	const streamData = await getStreamSource(sourceId, key, false, true); // no retry
 
-		console.log("Testing key:", key);
-		if (streamData && streamData.sources) {
-			// Extract stream ID and cache it
-			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
-			const json1 = await res1.json();
-			const link = json1.link || "";
-			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-			const streamId = match ? match[1] : null;
+	// 	console.log("Testing key:", key);
+	// 	if (streamData && streamData.sources) {
+	// 		// Extract stream ID and cache it
+	// 		const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
+	// 		const json1 = await res1.json();
+	// 		const link = json1.link || "";
+	// 		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+	// 		const streamId = match ? match[1] : null;
 
-			if (streamId) _keyCache.set(streamId, key);
+	// 		if (streamId) _keyCache.set(streamId, key);
 
-			return {
-				key: key,
-				streamData: streamData
-			};
-		}
-	} catch (e) {
-		console.log("Key 5 failed");
-	}
+	// 		return {
+	// 			key: key,
+	// 			streamData: streamData
+	// 		};
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 5 failed");
+	// }
 
 	return null;
 }
@@ -513,10 +535,36 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 			result.sources = encrypted;
 			return result;	
 		} else {
-			const sources = decrypt(_key, encrypted);
+			const decode_url = `https://script.google.com/macros/s/AKfycbx-yHTwupis_JD0lNzoOnxYcEYeXmJZrg7JeMxYnEZnLBy5V0--UxEvP-y9txHyy1TX9Q/exec?encrypted_data=${encodeURIComponent(encrypted)}&nonce=${encodeURIComponent(_key)}&secret=${encodeURIComponent(key)}`;
 
-			result.sources = sources;
-			return result;
+			console.log("Decoded URL: " + decode_url);
+
+			const response = await soraFetch(decode_url, { headers });
+			if (!response) throw new Error("Failed to fetch decrypted sources");
+			const sources = await response.text();
+
+			const match = sources.match(/\[{"file":.*?}\]/);
+
+			if (match) {
+				try {
+					const json = JSON.parse(match[0]);
+					console.log(json);
+
+					result.sources = json;
+					return result;
+				} catch (e) {
+					console.error("Invalid JSON:", e);
+				}
+			} else {
+				console.log("No JSON found");
+			}
+
+			// const sources = await decrypt(_key, encrypted);
+
+			// console.log("Decrypted sources: " + JSON.stringify(sources));
+
+			// result.sources = sources;
+			// return result;
 		}
 	} catch (error) {
 		console.log("Error in getStreamSource: " + error);
