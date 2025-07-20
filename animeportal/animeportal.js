@@ -27,7 +27,7 @@ async function searchResults(keyword) {
         console.log(results);
         return JSON.stringify(results);
     } catch (error) {
-        console.log('Fetch error in searchResults:', error);
+        console.log('Fetch error in searchResults: ' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -84,7 +84,7 @@ async function extractDetails(url) {
         console.log(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Ошибка загрузки описания',
             aliases: 'Информация недоступна',
@@ -132,14 +132,14 @@ async function extractEpisodes(url) {
         console.log(`Episodes: ${JSON.stringify(results)}`);
         return JSON.stringify(results);
     } catch (error) {
-        console.log('Fetch error in extractEpisodes:', error);
+        console.log('Fetch error in extractEpisodes: ' + error);
         return JSON.stringify([]);
     }
 }
 
 // searchResults('one punch');
 // extractDetails('https://anime-portal.su/4900-klinok-rassekajushhij-demonov.html');
-extractEpisodes('https://anime-portal.su/4900-klinok-rassekajushhij-demonov.html');
+// extractEpisodes('https://anime-portal.su/4900-klinok-rassekajushhij-demonov.html');
 // extractStreamUrl('https://anime-portal.su/4900-klinok-rassekajushhij-demonov.html|1|1');
 
 async function extractStreamUrl(url) {
