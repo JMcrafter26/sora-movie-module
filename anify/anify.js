@@ -38,6 +38,14 @@ async function searchResults(keyword) {
 
 // extractStreamUrl("https://anify.to/watch/1066/solo-leveling/1");
 
+// searchResults("fragrant");
+// extractEpisodes("https://anify.to/anime/6106/the-fragrant-flower-blooms-with-dignity");
+
+// searchResults("your name");
+// extractEpisodes("https://anify.to/anime/2238/your-name-movie");
+
+// extractEpisodes("https://anify.to/anime/8006/violet-evergarden");
+
 async function extractDetails(url) {
     try {
         const response = await soraFetch(url);
@@ -114,11 +122,48 @@ async function extractEpisodes(url) {
 
         while ((match = episodeRegex.exec(html)) !== null) {
             episodes.push({
-                title: `Episode ${match[2]}`,
                 href: `https://anify.to${match[1].trim()}`,
                 number: parseInt(match[2], 10)
             });
         }
+
+        episodes.sort((a, b) => a.number - b.number);
+
+        // const episodeRegex2 = /<a href="(\/watch\/[^"]+)">[\s\S]*?<span class="badge badge-(movie|special)[^"]*">[\s\S]*?<span class="animename[^>]*">([\s\S]*?)<\/span>/g;
+
+        const episodes2 = [];
+        // let match2;
+
+        // while ((match2 = episodeRegex2.exec(html)) !== null) {
+        //     const href = match2[1].trim();
+
+        //     const numberMatch = href.match(/\/(?:m|s)-(\d+)/);
+
+        //     if (numberMatch) {
+        //         episodes2.push({
+        //             href: `https://anify.to${href}`,
+        //             number: parseInt(numberMatch[1], 10)
+        //         });
+        //     }
+        // }
+
+        // episodes2.sort((a, b) => a.number - b.number);
+
+        // Match links with /m- or /s- and get href and number
+        const regex = /<a href="(\/watch\/[^"]*?\/[ms]-(\d+))"[^>]*>[\s\S]*?<span class="badge badge-(movie|special)"/g;
+
+        let match3;
+        while ((match3 = regex.exec(html)) !== null) {
+            const href = match3[1].trim();
+            const number = parseInt(match3[2], 10);
+
+            episodes2.push({
+                href: `https://anify.to${href}`,
+                number
+            });
+        }
+
+        episodes.push(...episodes2);
 
         console.log(episodes);
         return JSON.stringify(episodes);
@@ -129,7 +174,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         const response = await soraFetch(url);
