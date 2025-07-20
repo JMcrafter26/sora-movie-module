@@ -19,7 +19,7 @@ async function searchResults(keyword) {
         sendLog(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        sendLog('Fetch error in searchResults:', error);
+        sendLog('Fetch error in searchResults: ' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -54,7 +54,7 @@ Directors: ${data.directors ? data.directors : 'Unknown'}
         sendLog(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        sendLog('Details error:', error);
+        sendLog('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Duration: Unknown',
@@ -97,7 +97,7 @@ async function extractEpisodes(url) {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        sendLog('Fetch error in extractEpisodes:', error);
+        sendLog('Fetch error in extractEpisodes: ' + error);
         return JSON.stringify([]);
     }    
 }
@@ -167,8 +167,15 @@ async function extractStreamUrl(url) {
             return JSON.stringify([{ provider: "Error2", link: "" }]);
         }
     } catch (error) {
-        sendLog('Fetch error in extractStreamUrl:', error);
-        return null;
+        sendLog('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: [],
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
     }
 }
 

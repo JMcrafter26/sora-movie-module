@@ -46,7 +46,7 @@ async function extractStreamUrl(url) {
     const response = await soraFetch(url);
     const html = await response.text();
     
-    return null;
+    return "";
 }
 
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {

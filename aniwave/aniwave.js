@@ -190,8 +190,15 @@ async function extractStreamUrl(url) {
         // console.log(`HLS Source: ${hlsSource}`);
         // return hlsSource;
     } catch (error) {
-        console.log('Fetch error in extractStreamUrl:', error);
-        return null;
+        console.log('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: "",
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
     }
 }
 

@@ -29,7 +29,7 @@ async function searchResults(keyword) {
         console.log(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log('Fetch error in searchResults:', error);
+        console.log('Fetch error in searchResults: ' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -72,7 +72,7 @@ async function extractDetails(url) {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Duration: Unknown',
@@ -131,7 +131,7 @@ async function extractEpisodes(url) {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        console.log('Fetch error in extractEpisodes:', error);
+        console.log('Fetch error in extractEpisodes: ' + error);
         return JSON.stringify([]);
     }    
 }
@@ -227,10 +227,10 @@ async function extractStreamUrl(url) {
                     subtitles
                 }
 
-                console.log('Result:', result);
+                console.log('Result: ' + JSON.stringify(result));
                 return JSON.stringify(result);
             } else {
-                console.log('No stream URL found. HTML content:', html.substring(0, 1000));
+                console.log('No stream URL found. HTML content: ' + html.substring(0, 1000));
                 return "";
             }
         } else if (url.includes('tv')) {
@@ -322,18 +322,25 @@ async function extractStreamUrl(url) {
                     subtitles
                 }
 
-                console.log('Result:', result);
+                console.log('Result: ' + JSON.stringify(result));
                 return JSON.stringify(result);
             } else {
-                console.log('No stream URL found. HTML content:', html.substring(0, 1000));
+                console.log('No stream URL found. HTML content: ' + html.substring(0, 1000));
                 return "";
             }
         } else {
             throw new Error("Invalid URL format");
         }
     } catch (error) {
-        console.log('Fetch error in extractStreamUrl:', error);
-        return null;
+        console.log('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: [],
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
     }
 }
 

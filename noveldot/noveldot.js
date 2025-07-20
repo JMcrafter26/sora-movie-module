@@ -111,7 +111,7 @@ Genres: ${genres}
         console.log(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Unknown',
@@ -151,7 +151,7 @@ async function extractChapters(url) {
         console.log(chapters);
         return JSON.stringify(chapters);
     } catch (error) {
-        console.log('Fetch error in extractChapters:', error);
+        console.log('Fetch error in extractChapters: ' + error);
         return JSON.stringify([]);
     }
 }
@@ -185,12 +185,12 @@ async function extractText(url) {
         console.log(decodeHTMLEntities(finalContent));
         return decodeHTMLEntities(finalContent);
     } catch (error) {
-        console.log("Fetch error in extractText:", error);
+        console.log("Fetch error in extractText: " + error);
         return JSON.stringify({ text: 'Error extracting text' });
     }
 }
 
-searchResults("classroom of the elite");
+// searchResults("classroom of the elite");
 // extractDetails("https://www.noveldot.com/book-16808/Classroom-of-the-Elite-(LN)");
 // extractChapters("https://www.noveldot.com/book-16808/Classroom-of-the-Elite-(LN)");
 // extractText("https://www.noveldot.com/novel-16808-227546/Classroom-of-the-Elite-(LN)/chapter-1");

@@ -195,8 +195,15 @@ async function extractStreamUrl(url) {
         console.log('Result:', result);
         return JSON.stringify(result);
     } catch (error) {
-        console.log('Fetch error in extractStreamUrl:', error);
-        return null;
+        console.log('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: [],
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
     }
 }
 

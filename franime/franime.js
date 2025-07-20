@@ -190,8 +190,8 @@ async function extractStreamUrl(url) {
         console.log(stream);
         return stream;
     } catch (error) {
-        console.log("Fetch error in extractStreamUrl:", error);
-        return null;
+        console.log("Fetch error in extractStreamUrl: " + error);
+        return "";
     }
 }
 

@@ -19,7 +19,7 @@ async function searchResults(keyword) {
         console.log(results);
         return JSON.stringify(results);
     } catch (error) {
-        console.log('Fetch error in searchResults:', error);
+        console.log('Fetch error in searchResults: ' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -98,7 +98,7 @@ Last update: ${lastUpdate}
         return JSON.stringify(transformedResults);
 
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Unknown',
@@ -135,7 +135,7 @@ async function extractChapters(url) {
         console.log(chapters);
         return JSON.stringify(chapters);
     } catch (error) {
-        console.log('Fetch error in extractChapters:', error);
+        console.log('Fetch error in extractChapters: ' + error);
         return JSON.stringify([]);
     }
 }
@@ -178,7 +178,7 @@ async function extractText(url) {
         return content;
 
     } catch (error) {
-        console.log("Fetch error in extractText:", error);
+        console.log("Fetch error in extractText: " + error);
         return JSON.stringify({ text: 'Error extracting text' });
     }
 }

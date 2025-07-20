@@ -53,7 +53,7 @@ async function extractEpisodes(url) {
 // searchResults("all");
 // extractDetails("https://pixeldrain.net/l/dX3cF5Q3");
 // extractEpisodes("https://pixeldrain.net/l/dX3cF5Q3");
-extractStreamUrl(`EDg7Q9Uu`);
+// extractStreamUrl(`EDg7Q9Uu`);
 
 async function extractStreamUrl(url) {
     if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';

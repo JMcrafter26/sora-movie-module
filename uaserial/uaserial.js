@@ -20,7 +20,7 @@ async function searchResults(keyword) {
         console.log(results);
         return JSON.stringify(results);
     } catch (error) {
-        console.log('Fetch error in searchResults:', error);
+        console.log('Fetch error in searchResults: ' + error);
         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
@@ -59,7 +59,7 @@ async function extractDetails(url) {
         console.log(transformedResults);
         return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log('Details error:', error);
+        console.log('Details error: ' + error);
         return JSON.stringify([{
             description: 'Error loading description',
             aliases: 'Unknown',
@@ -105,7 +105,7 @@ async function extractEpisodes(url) {
         console.log('No episodes or iframe found');
         return JSON.stringify([]);
     } catch (error) {
-        console.log('Fetch error in extractEpisodes:', error);
+        console.log('Fetch error in extractEpisodes: ' + error);
         return JSON.stringify([]);
     }
 }
@@ -200,8 +200,15 @@ async function extractStreamUrl(url) {
         console.log(result);
         return JSON.stringify(result);
     } catch (error) {
-        console.log("Fetch error in extractStreamUrl:", error);
-        return null;
+        console.log('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: [],
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
     }
 }
 

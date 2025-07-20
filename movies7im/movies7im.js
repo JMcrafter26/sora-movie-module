@@ -226,7 +226,7 @@ async function extractStreamUrl(url) {
         // console.log(JSON.stringify(results));
 
         let streams = [];
-        streams.push(`https://embed.lc${results[0].sources[0].file}`);
+        streams.push(`https://embed.lc${results[0].sources[0].file}/1080p`);
         const subtitlesFile = results[0].tracks.find(t => t.code === "en").file;
         const subtitles = `https://embed.lc${subtitlesFile}`;
 
