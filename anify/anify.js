@@ -174,7 +174,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         const response = await soraFetch(url);
