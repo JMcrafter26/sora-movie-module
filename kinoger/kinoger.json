@@ -1,12 +1,12 @@
 {
-    "sourceName": "KinoGer",
+    "sourceName": "KinoGer (BROKEN)",
     "iconUrl": "https://raw.githubusercontent.com/xibrox/sora-movie-module/refs/heads/main/kinoger/icon.png",
     "author": {
         "name": "ibro",
         "icon": "https://raw.githubusercontent.com/xibrox/sora-movie-module/refs/heads/main/profile.jpg",
         "url": "https://github.com/xibrox"
     },
-    "version": "1.0.3",
+    "version": "1.0.4",
     "language": "German",
     "streamType": "MP4",
     "quality": "1080p",
