@@ -215,6 +215,7 @@ async function extractStreamUrl(url) {
                     
                     if (stream) {
                         const headers = {
+                            'Origin': 'https://player.vidzee.wtf',
                             'Referer': data.headers.Referer
                         };
 
