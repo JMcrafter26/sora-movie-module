@@ -85,8 +85,6 @@ Note: ${rating}/10
     }
 }
 
-// html for href: "data:{"2":{server_id:"5006784",server_type:"vostfr",server_number:"6",server_name:"sibnet",server_url:"https://video.sibnet.ru/shell.php?videoid=5006784",timestamps:[],quality:"720",server_source_type:"iframe"}}},{id:"
-
 async function extractEpisodes(url) {
     try {
         const response = await soraFetch(url);
@@ -233,16 +231,17 @@ async function extractStreamUrl(url) {
 
                 streams.push(addToStreams);
             } else if (embed.includes("https://video.sibnet.ru/shell.php")) {
-                const responseText = await soraFetch(embed);
+                console.log("Flexible extraction for Sibnet:", embed);
+                const responseText = await soraFetch(embed, { encoding: 'windows-1251' });
                 const htmlText = await responseText.text();
+
+                console.log(htmlText);
 
                 const mp4UrlMatch = htmlText.match(/src:\s*"([^"]+\.mp4)"/);
                 const mp4Url = mp4UrlMatch ? mp4UrlMatch[1] : null;
 
-                // console.log(mp4Url);
-
                 const stream = `https://video.sibnet.ru${mp4Url}`;
-                // console.log("Flexible extraction:", stream);
+                console.log("Flexible extraction:", stream);
 
                 const addToStreams = {
                     title: "Sibnet",
@@ -285,9 +284,21 @@ async function extractStreamUrl(url) {
 
 // extractStreamUrl("https://www.toonanime.biz/anime-vf/solo-leveling|1");
 
-async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+// searchResults("one piece");
+// extractDetails("https://www.toonanime.biz/anime-vf/one-piece-vf");
+// extractEpisodes("https://www.toonanime.biz/anime-vf/one-piece-vf");
+// extractStreamUrl("https://www.toonanime.biz/anime-vf/one-piece-vf|1");
+
+async function soraFetch(url, options = { headers: {}, method: 'GET', body: null, encoding: 'utf-8' }) {
     try {
-        return await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+        return await fetchv2(
+            url,
+            options.headers ?? {},
+            options.method ?? 'GET',
+            options.body ?? null,
+            true,
+            options.encoding ?? 'utf-8'
+        );
     } catch(e) {
         try {
             return await fetch(url, options);

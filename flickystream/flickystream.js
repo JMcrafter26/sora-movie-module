@@ -128,7 +128,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         if (url.includes('movie')) {
@@ -153,15 +153,15 @@ async function extractStreamUrl(url) {
                             'Referer': data.headers.Referer
                         };
 
-                        streams.push(data.provider);
-                        streams.push(stream.link);
+                        // streams.push(data.provider);
+                        // streams.push(stream.link);
                         // streams.push(`headers: ${JSON.stringify(headers)}`);
 
-                        // streams.push({
-                        //     title: data.provider,
-                        //     streamUrl: stream.link,
-                        //     headers: headers
-                        // });
+                        streams.push({
+                            title: data.provider,
+                            streamUrl: stream.link,
+                            headers: headers
+                        });
                     }
                 }
             }
@@ -218,15 +218,15 @@ async function extractStreamUrl(url) {
                             'Referer': data.headers.Referer
                         };
 
-                        streams.push(data.provider);
-                        streams.push(stream.link);
+                        // streams.push(data.provider);
+                        // streams.push(stream.link);
                         // streams.push(`headers: ${JSON.stringify(headers)}`);
 
-                        // streams.push({
-                        //     title: data.provider,
-                        //     streamUrl: stream.link,
-                        //     headers: headers
-                        // });
+                        streams.push({
+                            title: data.provider,
+                            streamUrl: stream.link,
+                            headers: headers
+                        });
                     }
                 }
             }
@@ -275,7 +275,10 @@ async function extractStreamUrl(url) {
     }
 }
 
-// extractStreamUrl("https://flickystream.com/player/movie/950387");
+// searchResults("Breaking Bad").then(console.log);
+// extractDetails("https://flickystream.com/player/tv/1396/1/1").then(console.log);
+// extractEpisodes("https://flickystream.com/player/tv/1396/1/1").then(console.log);
+extractStreamUrl("https://flickystream.com/player/tv/1396/1/1").then(console.log);
 
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
     try {
