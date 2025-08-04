@@ -1,12 +1,12 @@
 {
-    "sourceName": "MyFlixer",
+    "sourceName": "MyFlixer (BROKEN)",
     "iconUrl": "https://raw.githubusercontent.com/xibrox/sora-movie-module/refs/heads/main/myflixer/icon.png",
     "author": {
         "name": "ibro",
         "icon": "https://raw.githubusercontent.com/xibrox/sora-movie-module/refs/heads/main/profile.jpg",
         "url": "https://github.com/xibrox"
     },
-    "version": "1.1.8",
+    "version": "1.1.9",
     "language": "English",
     "streamType": "HLS",
     "quality": "1080p",
