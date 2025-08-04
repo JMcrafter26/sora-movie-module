@@ -128,7 +128,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         if (url.includes('movie')) {
@@ -280,7 +280,7 @@ async function extractStreamUrl(url) {
 // searchResults("Breaking Bad").then(console.log);
 // extractDetails("https://flickystream.com/player/tv/1396/1/1").then(console.log);
 // extractEpisodes("https://flickystream.com/player/tv/1396/1/1").then(console.log);
-extractStreamUrl("https://flickystream.com/player/tv/1396/1/1").then(console.log);
+// extractStreamUrl("https://flickystream.com/player/tv/1396/1/1").then(console.log);
 
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
     try {

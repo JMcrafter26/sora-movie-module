@@ -1,299 +1,230 @@
-///////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////       Main Functions          //////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////
-
 async function searchResults(keyword) {
     try {
-
-        const encodedKeyword = encodeURIComponent(keyword);
-        const searchUrl = `https://animekai.to/browser?keyword=clannad`;
-        const response = await fetchv2(searchUrl);
-        const responseText = await response.text();
-
         const results = [];
-        const baseUrl = "https://animekai.to";
 
-        const listRegex = /<div class="aitem">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
-        let match;
+        for (const keyword of ["clannad", "violet evergarden", "toradora", "bocchi the rock"]) {
+            const encodedKeyword = encodeURIComponent(keyword);
+            const responseText = await soraFetch(`https://ww.aniwave.se/filter?keyword=${encodedKeyword}`);
+            const html = await responseText.text();
 
-        while ((match = listRegex.exec(responseText)) !== null) {
-            const block = match[1];
+            const regex = /<div\s+class="item\s*">[\s\S]*?<a\s+href="([^"]+)">[\s\S]*?<img\s+src="([^"]+)"[^>]*>[\s\S]*?<a\s+class="name\s+d-title"[^>]*>([^<]+)<\/a>/g;
 
-            const hrefRegex = /<a[^>]+href="([^"]+)"[^>]*class="poster"[^>]*>/;
-            const hrefMatch = block.match(hrefRegex);
-            let href = hrefMatch ? hrefMatch[1] : null;
-            if (href && !href.startsWith("http")) {
-                href = href.startsWith("/")
-                    ? baseUrl + href
-                    : baseUrl + href;
-            }
+            let match;
 
-            const imgRegex = /<img[^>]+data-src="([^"]+)"[^>]*>/;
-            const imgMatch = block.match(imgRegex);
-            const image = imgMatch ? imgMatch[1] : null;
+            while ((match = regex.exec(html)) !== null) {
+                if (match[3].trim() === "Omiai Aite Wa Oshiego Tsuyokina Mondaiji") {
+                    continue;
+                }
 
-            const titleRegex = /<a[^>]+class="title"[^>]+title="([^"]+)"[^>]*>/;
-            const titleMatch = block.match(titleRegex);
-            const title = cleanHtmlSymbols(titleMatch ? titleMatch[1] : null);
-
-            if (href && image && title) {
-                results.push({ href, image, title });
+                results.push({
+                    title: match[3].trim(),
+                    image: match[2].trim(),
+                    href: `https://ww.aniwave.se${match[1].trim()}`
+                });
             }
         }
 
         return JSON.stringify(results);
-    }
-    catch (error) {
-        console.log('SearchResults function error' + error);
-        return JSON.stringify(
-            [{ href: 'https://error.org', image: 'https://error.org', title: 'Error' }]
-        );
+    } catch (error) {
+        console.log('Fetch error in searchResults:', error);
+        return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
     }
 }
 
+// searchResults("clannad").then(console.log);
+
 async function extractDetails(url) {
     try {
+        const responseText = await soraFetch(url);
+        const html = await responseText.text();
 
-        const fetchUrl = `${url}`;
-        const response = await fetchv2(fetchUrl);
-        const responseText = await response.text();
+        const descriptionMatch = html.match(/<div class="synopsis mb-3">[\s\S]*?<div class="content">(.*?)<\/div>/);
+        const description = descriptionMatch ? descriptionMatch[1].trim() : 'No description available';
 
+        const aliasesMatch = html.match(/<div class="names font-italic mb-2">(.*?)<\/div>/);
+        const aliases = aliasesMatch ? aliasesMatch[1].trim() : 'No aliases available';
 
-        const details = [];
+        const airdateMatch = html.match(/Date aired:\s*<span><span[^>]*>(.*?)<\/span>/);
+        const airdate = airdateMatch ? `Aired: ${airdateMatch[1].trim()}` : 'Aired: Unknown';
 
-        const descriptionMatch = /<div class="desc text-expand">([\s\S]*?)<\/div>/;
-        let description = descriptionMatch.exec(responseText);
+        const transformedResults = [{
+            description,
+            aliases,
+            airdate
+        }];
 
-        const aliasesMatch = /<small class="al-title text-expand">([\s\S]*?)<\/small>/;
-        let aliases = aliasesMatch.exec(responseText);
-
-        if (description && aliases) {
-            details.push({
-                description: description[1] ? cleanHtmlSymbols(description[1]) : "Not available",
-                aliases: aliases[1] ? cleanHtmlSymbols(aliases[1]) : "Not available",
-                airdate: "Not available"
-            });
-        }
-
-        return JSON.stringify(details);
-    }
-    catch (error) {
-        console.log('Details error:' + error);
+        return JSON.stringify(transformedResults);
+    } catch (error) {
+        console.log('Details error:', error);
         return JSON.stringify([{
             description: 'Error loading description',
-            aliases: 'Aliases: Unknown',
-            airdate: 'Aired: Unknown'
+            aliases: 'Duration: Unknown',
+            airdate: 'Aired/Released: Unknown'
         }]);
     }
 }
 
 async function extractEpisodes(url) {
     try {
+        const match = url.match(/https:\/\/ww\.aniwave\.se\/anime-watch\/([^\/]+)/);
+        if (!match) throw new Error("Invalid URL format");
 
-        const fetchUrlForId = `${url}`;
-        const repsonse = await fetchv2(fetchUrlForId);
-        const responseTextForId = await repsonse.text();
+        const animeSlug = match[1];
 
-        const kaiCodexContent = await loadKaiCodex();
-        const patchedKaiCodex = kaiCodexContent + "\nthis.KAICODEX = KAICODEX;";  // attach to global scope
-        (0, eval)(patchedKaiCodex);  // Now it should be visible globally
+        const match2 = animeSlug.match(/([^-]+)/);
 
-        const rateBoxIdRegex = /<div class="rate-box"[^>]*data-id="([^"]+)"/;
-        const idMatch = responseTextForId.match(rateBoxIdRegex);
-        const aniId = idMatch ? idMatch[1] : null;
-        const urlFetchToken = KAICODEX.enc(aniId);
+        const firstSlugWord = match2[1];
 
-        const fetchUrlListApi = `https://animekai.to/ajax/episodes/list?ani_id=${aniId}&_=${urlFetchToken}`;
-        const responseTextListApi = await fetchv2(fetchUrlListApi);
-        const data = await responseTextListApi.json();
+        const responseText = await soraFetch(url);
+        const html = await responseText.text();
 
-        let htmlContentListApi = "";
-        htmlContentListApi = cleanJsonHtml(data.result);
+        const episodesMatch = html.match(/Episodes:\s*<span>(\d+)<\/span>/);
+        const episodesCount = episodesMatch ? parseInt(episodesMatch[1], 10) : 0;
 
-        // Continue with the extraction
-        const episodes = [];
+        const transformedResults = [];
 
-        // Regular expression to find all <a> tags with num and token attributes
-        const episodeRegex = /<a[^>]+num="([^"]+)"[^>]+token="([^"]+)"[^>]*>/g;
-        let epMatch;
+        if (episodesCount > 0) {
+            for (let i = 1; i <= episodesCount; i++) {
+                transformedResults.push({
+                    href: `${url}/ep-${i}`,
+                    number: i
+                });
+            }
+        } else {
+            const apiUrl = `https://ww.aniwave.se/filter?keyword=${firstSlugWord}`;
 
-        while ((epMatch = episodeRegex.exec(htmlContentListApi)) !== null) {
-            const num = epMatch[1];
-            const token = epMatch[2];
-            const tokenEncoded = KAICODEX.enc(token);
-            const episodeUrl = `https://animekai.to/ajax/links/list?token=${token}&_=${tokenEncoded}`;
+            const response = await soraFetch(apiUrl);
+            const data = await response.text();
 
-            episodes.push({
-                href: episodeUrl,
-                number: parseInt(num, 10)
-            });
-        }
+            const regex = new RegExp(
+                `<a\\s+[^>]*href="\\/anime-watch\\/${animeSlug}"[^>]*>[\\s\\S]*?<span>Ep:\\s*(\\d+)<\\/span>`,
+                'i'
+            );
+        
+            const epMatch = data.match(regex);
+            const episodesCount2 = epMatch ? parseInt(epMatch[1], 10) : 0;
 
-        return JSON.stringify(episodes);
-    }
-    catch (error) {
-        console.log('Fetch error:' + error);
-        return JSON.stringify([{ number: '0', href: '' }]);
-    }
-}
-
-async function extractStreamUrl(url) {
-    try {
-        const fetchUrl = `${url}`;
-        const reponse = await fetchv2(fetchUrl);
-        const text = await reponse.text();
-        const cleanedHtml = cleanJsonHtml(text);
-
-        const kaiCodexContent = await loadKaiCodex();
-        const patchedKaiCodex = kaiCodexContent + "\nthis.KAICODEX = KAICODEX;";  // attach to global scope
-        (0, eval)(patchedKaiCodex);  // Now it should be visible globally
-
-
-        // Extract div blocks with their content
-        const subRegex = /<div class="server-items lang-group" data-id="sub"[^>]*>([\s\S]*?)<\/div>/;
-        const softsubRegex = /<div class="server-items lang-group" data-id="softsub"[^>]*>([\s\S]*?)<\/div>/;
-        const dubRegex = /<div class="server-items lang-group" data-id="dub"[^>]*>([\s\S]*?)<\/div>/;
-
-        const subMatch = subRegex.exec(cleanedHtml);
-        const softsubMatch = softsubRegex.exec(cleanedHtml);
-        const dubMatch = dubRegex.exec(cleanedHtml);
-
-        // Store the content in variables
-        const sub = subMatch ? subMatch[1].trim() : "";
-        const softsub = softsubMatch ? softsubMatch[1].trim() : "";
-        const dub = dubMatch ? dubMatch[1].trim() : "";
-
-        let dataLid = "";
-        let fetchUrlServerApi = "";
-        let KaiMegaUrlJson = "";
-        let megaELinkJson = ""
-        let megaEmbeddedUrl = "";
-        let megaMediaUrl = "";
-        let streamUrlJson = "";
-        let streamUrl = "";
-
-        if (sub) {
-            // Find server 1 span and extract data-lid
-            const serverSpanRegex = /<span class="server"[^>]*data-lid="([^"]+)"[^>]*>Server 1<\/span>/;
-            const serverMatch = serverSpanRegex.exec(sub);
-
-            if (serverMatch && serverMatch[1]) {
-                dataLid = serverMatch[1];
-                dataLidToken = KAICODEX.enc(dataLid);
-
-                // https://animekai.to/ajax/links/view?id=dIS48a6p6A&_=UVpJN001ckY4cHh4R3I4QVJWM2RqTFdCeFQ
-                fetchUrlServerApi = `https://animekai.to/ajax/links/view?id=${dataLid}&_=${dataLidToken}`;
-
-                const responseTextServerApi = await fetchv2(fetchUrlServerApi);
-                const dataServerApi = await responseTextServerApi.json();
-
-                KaiMegaUrlJson = KAICODEX.dec(dataServerApi.result);
-                megaELinkJson = JSON.parse(KaiMegaUrlJson);
-                megaEmbeddedUrl = megaELinkJson.url;
-                megaMediaUrl = megaEmbeddedUrl.replace("/e/", "/media/");
-
-                // Fetch the media url
-                const mediaUrl = await fetchv2(megaMediaUrl);
-                const mediaJson = await mediaUrl.json();
-
-                streamUrlJson = mediaJson.result;
-                streamUrlJson = KAICODEX.decMega(streamUrlJson);
-                const parsedStreamData = JSON.parse(streamUrlJson);
-
-                if (parsedStreamData && parsedStreamData.sources && parsedStreamData.sources.length > 0) {
-                    streamUrl = parsedStreamData.sources[0].file;
-                } else {
-                    console.log('No stream sources found in the response' + parsedStreamData);
-                }
-
+            for (let i = 1; i <= episodesCount2; i++) {
+                transformedResults.push({
+                    href: `${url}/ep-${i}`,
+                    number: i
+                });
             }
         }
 
-        return streamUrl;
-    }
-    catch (error) {
-        console.log('Fetch error:' + error);
-        return "https://error.org";
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////       Helper Functions       ////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////
-
-function cleanHtmlSymbols(string) {
-    if (!string) return "";
-
-    return string
-        .replace(/&#8217;/g, "'")
-        .replace(/&#8211;/g, "-")
-        .replace(/&#[0-9]+;/g, "")
-        .replace(/\r?\n|\r/g, " ")  // Replace any type of newline with a space
-        .replace(/\s+/g, " ")       // Replace multiple spaces with a single space
-        .trim();                    // Remove leading/trailing whitespace
-}
-
-function cleanJsonHtml(jsonHtml) {
-    if (!jsonHtml) return "";
-
-    return jsonHtml
-        .replace(/\\"/g, '"')
-        .replace(/\\'/g, "'")
-        .replace(/\\\\/g, '\\')
-        .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t')
-        .replace(/\\r/g, '\r');
-}
-
-// Credits to @AnimeTV Project for the KAICODEX
-async function loadKaiCodex() {
-    try {
-        const url = 'https://raw.githubusercontent.com/amarullz/kaicodex/refs/heads/main/generated/kai_codex.js';
-        const response = await fetchv2(url);
-        const scriptText = await response.text();
-        return scriptText;
+        return JSON.stringify(transformedResults);
     } catch (error) {
-        console.log("Load Kaicodex error:" + error)
-    }
+        console.log('Fetch error in extractEpisodes:', error);
+        return JSON.stringify([]);
+    }    
 }
 
+async function extractStreamUrl(url) {
+    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
-function btoa(input) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    let str = String(input);
-    let output = '';
+    try {
+        const match = url.match(/https:\/\/ww\.aniwave\.se\/anime-watch\/([^\/]+)\/ep-([^\/]+)/);
+        if (!match) throw new Error("Invalid URL format");
 
-    for (let block = 0, charCode, i = 0, map = chars;
-        str.charAt(i | 0) || (map = '=', i % 1);
-        output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))) {
-        charCode = str.charCodeAt(i += 3 / 4);
-        if (charCode > 0xFF) {
-            throw new Error("btoa failed: The string contains characters outside of the Latin1 range.");
+        const animeSlug = match[1];
+        const episodeNumber = match[2];
+        const headers = {
+            'Referer': url,
+        };
+
+        console.log(`Fetching stream URL for anime: ${animeSlug}, episode: ${episodeNumber}`);
+
+        const apiUrl = `https://ww.aniwave.se/ajax/player/?ep=${animeSlug}-episode-${episodeNumber}&dub=false&sn=${animeSlug}&epn=${episodeNumber}&g=true&autostart=true`;
+        const responseText = await soraFetch(apiUrl, { headers });
+        const html = await responseText.text();
+
+        const regex = /file"\s*:\s*"([^"]+\.m3u8)"/g;
+        const subUrls = [];
+        let match2;
+        while ((match2 = regex.exec(html)) !== null) {
+            subUrls.push(match2[1]);
         }
-        block = (block << 8) | charCode;
-    }
 
-    return output;
+        console.log(subUrls[0]);
+
+        const apiUrl2 = `https://ww.aniwave.se/ajax/player/?ep=${animeSlug}-episode-${episodeNumber}&dub=true&sn=${animeSlug}-dub&epn=${episodeNumber}&g=true&autostart=true`;
+        const responseText2 = await soraFetch(apiUrl2, { headers });
+        const html2 = await responseText2.text();
+
+        const regex2 = /file"\s*:\s*"([^"]+\.m3u8)"/g;
+        const dubUrls = [];
+        let match3;
+        while ((match3 = regex2.exec(html2)) !== null) {
+            dubUrls.push(match3[1]);
+        }
+
+        console.log(dubUrls[0]);
+
+        const streams = [];
+
+        if (subUrls[0]) {
+            streams.push({
+                title: "SUB",
+                streamUrl: subUrls[0],
+                headers: {
+                    'Referer': url,
+                }
+            });
+        }
+
+        if (dubUrls[0]) {
+            streams.push({
+                title: "DUB",
+                streamUrl: dubUrls[0],
+                headers: {
+                    'Referer': url,
+                }
+            });
+        }
+
+        const result = {
+            streams,
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
+
+        // const hlsSource = `https://hlsx3cdn.echovideo.to/${animeSlug}/${episodeNumber}/master.m3u8`;
+        
+        // console.log(`HLS Source: ${hlsSource}`);
+        // return hlsSource;
+    } catch (error) {
+        console.log('Fetch error in extractStreamUrl: ' + error);
+
+        const result = {
+            streams: "",
+            subtitles: ""
+        };
+
+        console.log(result);
+        return JSON.stringify(result);
+    }
 }
 
-function atob(input) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    let str = String(input).replace(/=+$/, '');
-    let output = '';
-
-    if (str.length % 4 == 1) {
-        throw new Error("atob failed: The input is not correctly encoded.");
+async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+    try {
+        return await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+    } catch(e) {
+        try {
+            return await fetch(url, options);
+        } catch(error) {
+            return null;
+        }
     }
-
-    for (let bc = 0, bs, buffer, i = 0;
-        (buffer = str.charAt(i++));
-        ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4)
-            ? output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)))
-            : 0) {
-        buffer = chars.indexOf(buffer);
-    }
-
-    return output;
 }
 
+function _0xCheck() {
+    var _0x1a = typeof _0xB4F2 === 'function';
+    var _0x2b = typeof _0x7E9A === 'function';
+    return _0x1a && _0x2b ? (function(_0x3c) {
+        return _0x7E9A(_0x3c);
+    })(_0xB4F2()) : !1;
+}
+
+function _0x7E9A(_){return((___,____,_____,______,_______,________,_________,__________,___________,____________)=>(____=typeof ___,_____=___&&___[String.fromCharCode(...[108,101,110,103,116,104])],______=[...String.fromCharCode(...[99,114,97,110,99,105])],_______=___?[...___[String.fromCharCode(...[116,111,76,111,119,101,114,67,97,115,101])]()]:[],(________=______[String.fromCharCode(...[115,108,105,99,101])]())&&_______[String.fromCharCode(...[102,111,114,69,97,99,104])]((_________,__________)=>(___________=________[String.fromCharCode(...[105,110,100,101,120,79,102])](_________))>=0&&________[String.fromCharCode(...[115,112,108,105,99,101])](___________,1)),____===String.fromCharCode(...[115,116,114,105,110,103])&&_____===16&&________[String.fromCharCode(...[108,101,110,103,116,104])]===0))(_)}
