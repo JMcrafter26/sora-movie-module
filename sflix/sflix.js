@@ -153,7 +153,7 @@ async function extractEpisodes(url) {
 }
 
 async function extractStreamUrl(url) {
-	// if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+	if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
 	try {
         if (url.includes("https://sflix.to/tv/")) {
@@ -288,7 +288,7 @@ async function extractStreamUrl(url) {
 
 // searchResults("One piece");
 // extractEpisodes("https://sflix.to/tv/free-one-piece-hd-39514");
-extractStreamUrl("https://sflix.to/tv/free-one-piece-hd-39514/6021");
+// extractStreamUrl("https://sflix.to/tv/free-one-piece-hd-39514/6021");
 
 function decodeHtmlEntities(text) {
     return text
@@ -420,33 +420,33 @@ async function getWorkingKey(testIds) {
 		console.log("Key 3 failed");
 	}
 
-	try {
-		const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
-		const json4 = await res4.json();
-		const key = json4.vidstr;
+	// try {
+	// 	const res4 = await soraFetch('https://raw.githubusercontent.com/yogesh-hacker/MegacloudKeys/refs/heads/main/keys.json');
+	// 	const json4 = await res4.json();
+	// 	const key = json4.vidstr;
 
-		const sourceId = testIds[0]; // Only test the first ID
-		const streamData = await getStreamSource(sourceId, key, false, true); // no retry
+	// 	const sourceId = testIds[0]; // Only test the first ID
+	// 	const streamData = await getStreamSource(sourceId, key, false, true); // no retry
 
-		console.log("Testing key:", key);
-		if (streamData && streamData.sources) {
-			// Extract stream ID and cache it
-			const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
-			const json1 = await res1.json();
-			const link = json1.link || "";
-			const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
-			const streamId = match ? match[1] : null;
+	// 	console.log("Testing key:", key);
+	// 	if (streamData && streamData.sources) {
+	// 		// Extract stream ID and cache it
+	// 		const res1 = await soraFetch('https://sflix.to/ajax/episode/sources/' + sourceId);
+	// 		const json1 = await res1.json();
+	// 		const link = json1.link || "";
+	// 		const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+	// 		const streamId = match ? match[1] : null;
 
-			if (streamId) _keyCache.set(streamId, key);
+	// 		if (streamId) _keyCache.set(streamId, key);
 
-			return {
-				key: key,
-				streamData: streamData
-			};
-		}
-	} catch (e) {
-		console.log("Key 4 failed");
-	}
+	// 		return {
+	// 			key: key,
+	// 			streamData: streamData
+	// 		};
+	// 	}
+	// } catch (e) {
+	// 	console.log("Key 4 failed");
+	// }
 
 	// try {
 	// 	const res5 = await soraFetch('https://raw.githubusercontent.com/SpencerDevs/megacloud-key-updater/refs/heads/master/key.txt');
