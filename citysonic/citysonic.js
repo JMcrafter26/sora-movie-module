@@ -274,7 +274,7 @@ async function extractStreamUrl(url) {
             const response = await soraFetch(url2);
             const html = await response.text();
 
-            const regex2 = /data-id="(\d+)"/g;
+            const regex2 = /data-linkid="(\d+)"/g;
             const ids = [];
             let match2;
                 while ((match2 = regex2.exec(html)) !== null) {
@@ -371,6 +371,15 @@ async function extractStreamUrl(url) {
 // searchResults("One piece");
 // extractEpisodes("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514");
 // extractStreamUrl("https://citysonic.tv/tv/watch-one-piece-movies-free-online-39514/6021");
+
+// extractEpisodes("https://citysonic.tv/movie/one-piece-stampede-41520");
+// extractStreamUrl("https://citysonic.tv/movie/one-piece-stampede-41520");
+
+
+
+// searchResults("Breaking bad");
+// extractEpisodes("https://citysonic.tv/tv/breaking-bad-39506");
+// extractStreamUrl("https://citysonic.tv/tv/breaking-bad-39506/7013");
 
 function decodeHtmlEntities(text) {
     return text
