@@ -181,34 +181,75 @@ async function extractStreamUrl(url) {
                 ids.push(match2[1]);
             }
 
-            console.log(ids);
-
-            if (!ids.length) throw new Error("No ids found");
-
-            const { key, streamData } = await getWorkingKey(ids);
-            if (!key) throw new Error("No working decryption key found");
-
-            let streams = [];
+			let streams = [];
             let subtitles = "";
 
-            for (let i = 1; i < ids.length; i++) {
-                const hlsStream = streamData.sources?.find(src => src.type === "hls");
-                if (hlsStream?.file) {
-                    if (i == 1) {
-                        streams.push("AKCloud");
-                    } else if (i == 2) {
-                        streams.push("MegaCloud");
-                    } else if (i == 3) {
-						streams.push("UpCloud");
+			for (const id of ids) {
+				console.log("ID: " + id);
+
+				const res = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + id);
+				const json = await res.json();
+				const link = json.link || "";
+				const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+				const streamId = match ? match[1] : null;
+
+				console.log("Stream ID: " + streamId);
+				const url = `https://videostr.net/embed-1/v3/e-1/${streamId}?z=`;
+
+				const res2 = await soraFetch("https://mc.ofchaos.com/api/videostr?url=" + url);
+				const json2 = await res2.json();
+
+				console.log("Decrypted Sources: " + JSON.stringify(json2));
+
+				if (json2.sources && json2.sources.length > 0) {
+					const hlsStream = json2.sources.find(src => src.type === "hls");
+					if (hlsStream?.file) {
+						if (ids[0] === id) {
+							streams.push("UpCloud");
+						} else if (ids[1] === id) {
+							streams.push("AKCloud");
+						} else if (ids[2] === id) {
+							streams.push("MegaCloud");
+						}
+
+						streams.push(hlsStream.file);
 					}
 
-                    streams.push(hlsStream.file);
-                }
+					if (json2.tracks) {
+						const subs = json2.tracks.filter(t => t.kind === "captions" && t.label === "English");
+						subtitles = subs[0]?.file || "";
+					}
+				}
+			}
 
-                if (streamData?.subtitles) {
-                    subtitles = streamData.subtitles;
-                }
-            }
+            // console.log("Extracted IDs: " + ids);
+
+            // if (!ids.length) throw new Error("No ids found");
+
+            // const { key, streamData } = await getWorkingKey(ids);
+            // if (!key) throw new Error("No working decryption key found");
+
+            // let streams = [];
+            // let subtitles = "";
+
+            // for (let i = 1; i < ids.length; i++) {
+            //     const hlsStream = streamData.sources?.find(src => src.type === "hls");
+            //     if (hlsStream?.file) {
+            //         if (i == 1) {
+            //             streams.push("AKCloud");
+            //         } else if (i == 2) {
+            //             streams.push("MegaCloud");
+            //         } else if (i == 3) {
+			// 			streams.push("UpCloud");
+			// 		}
+
+            //         streams.push(hlsStream.file);
+            //     }
+
+            //     if (streamData?.subtitles) {
+            //         subtitles = streamData.subtitles;
+            //     }
+            // }
 
             const final = {
                 streams: streams,
@@ -240,34 +281,75 @@ async function extractStreamUrl(url) {
                 ids.push(match2[1]);
             }
 
-            console.log(ids);
-
-            if (!ids.length) throw new Error("No ids found");
-
-            const { key, streamData } = await getWorkingKey(ids);
-            if (!key) throw new Error("No working decryption key found");
-
-            let streams = [];
+			let streams = [];
             let subtitles = "";
 
-            for (let i = 1; i < ids.length; i++) {
-                const hlsStream = streamData.sources?.find(src => src.type === "hls");
-                if (hlsStream?.file) {
-                    if (i == 1) {
-                        streams.push("AKCloud");
-                    } else if (i == 2) {
-                        streams.push("MegaCloud");
-					} else if (i == 3) {
-						streams.push("UpCloud");
+			for (const id of ids) {
+				console.log("ID: " + id);
+
+				const res = await soraFetch('https://citysonic.tv/ajax/episode/sources/' + id);
+				const json = await res.json();
+				const link = json.link || "";
+				const match = link.match(/\/embed-1\/v3\/e-1\/([^/?#]+)/);
+				const streamId = match ? match[1] : null;
+
+				console.log("Stream ID: " + streamId);
+				const url = `https://videostr.net/embed-1/v3/e-1/${streamId}?z=`;
+
+				const res2 = await soraFetch("https://mc.ofchaos.com/api/videostr?url=" + url);
+				const json2 = await res2.json();
+
+				console.log("Decrypted Sources: " + JSON.stringify(json2));
+
+				if (json2.sources && json2.sources.length > 0) {
+					const hlsStream = json2.sources.find(src => src.type === "hls");
+					if (hlsStream?.file) {
+						if (ids[0] === id) {
+							streams.push("UpCloud");
+						} else if (ids[1] === id) {
+							streams.push("AKCloud");
+						} else if (ids[2] === id) {
+							streams.push("MegaCloud");
+						}
+
+						streams.push(hlsStream.file);
 					}
 
-                    streams.push(hlsStream.file);
-                }
+					if (json2.tracks) {
+						const subs = json2.tracks.filter(t => t.kind === "captions" && t.label === "English");
+						subtitles = subs[0]?.file || "";
+					}
+				}
+			}
 
-                if (streamData?.subtitles) {
-                    subtitles = streamData.subtitles;
-                }
-            }
+            // console.log(ids);
+
+            // if (!ids.length) throw new Error("No ids found");
+
+            // const { key, streamData } = await getWorkingKey(ids);
+            // if (!key) throw new Error("No working decryption key found");
+
+            // let streams = [];
+            // let subtitles = "";
+
+            // for (let i = 1; i < ids.length; i++) {
+            //     const hlsStream = streamData.sources?.find(src => src.type === "hls");
+            //     if (hlsStream?.file) {
+            //         if (i == 1) {
+            //             streams.push("AKCloud");
+            //         } else if (i == 2) {
+            //             streams.push("MegaCloud");
+			// 		} else if (i == 3) {
+			// 			streams.push("UpCloud");
+			// 		}
+
+            //         streams.push(hlsStream.file);
+            //     }
+
+            //     if (streamData?.subtitles) {
+            //         subtitles = streamData.subtitles;
+            //     }
+            // }
 
             const final = {
                 streams: streams,
@@ -489,6 +571,8 @@ async function getStreamSource(sourceId, key, isSub, skipKeyRetry = false) {
 		const res3 = await soraFetch(`https://videostr.net/embed-1/v3/e-1/getSources?id=${streamId}&_k=${_key}`, { headers });
 		const json2 = await res3.json();
 		const encrypted = json2.sources;
+		// console.log(`https://videostr.net/embed-1/v3/e-1/getSources?id=${streamId}&_k=${_key}`);
+		console.log(`https://videostr.net/embed-1/v3/e-1/${streamId}?z=`);
 		console.log("Encrypted Sources: " + JSON.stringify(encrypted));
 
 		if (!encrypted) throw new Error("Encrypted stream not found");
