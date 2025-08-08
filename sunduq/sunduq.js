@@ -407,6 +407,34 @@ async function extractStreamUrl(url) {
         // Await all XPrime fetches
         await Promise.allSettled(xprimeFetchPromises);
 
+        // --- RgShows ---
+        try {
+            const rgShowsUrl = type === 'movie'
+                ? `https://api.rgshows.me/main/movie/${path}`
+                : (() => {
+                    const [showId, seasonNumber, episodeNumber] = path.split('/');
+                    return `https://api.rgshows.me/main/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                })();
+
+            const headers = {
+                'Origin': 'https://www.vidsrc.wtf',
+                'Referer': 'https://www.vidsrc.wtf/'
+            };
+
+            const rgShowsResponse = await soraFetch(rgShowsUrl, { headers });
+            const rgShowsData = await rgShowsResponse.json();
+
+            if (rgShowsData && rgShowsData.stream) {
+                streams.push({
+                    title: `RgShows`,
+                    streamUrl: rgShowsData.stream.url,
+                    headers: { Referer: "https://www.vidsrc.wtf/" }
+                });
+            }
+        } catch (e) {
+            console.log('RgShows fetch failed silently:', e);
+        }
+
         // --- CloudStream Pro (silent fallback) ---
         try {
             const cloudStreamUrl = type === 'movie'
