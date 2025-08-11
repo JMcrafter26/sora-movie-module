@@ -147,311 +147,306 @@ async function extractStreamUrl(url) {
         const [, type, path] = match;
 
         let streams = [];
+        let subtitles = "";
 
-        // --- Vidzee Fetches (Parallel) ---
-        const vidzeePromises = Array.from({ length: 5 }, (_, i) => {
-            const sr = i + 1;
-            const apiUrl = type === 'movie'
-                ? `https://player.vidzee.wtf/api/server?id=${path}&sr=${sr}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://player.vidzee.wtf/api/server?id=${showId}&sr=${sr}&ss=${seasonNumber}&ep=${episodeNumber}`;
-                })();
+        // --- Vidzee fetch (parallel 5 servers) ---
+        const fetchVidzee = async () => {
+            const vidzeePromises = Array.from({ length: 5 }, (_, i) => {
+                const sr = i + 1;
+                const apiUrl = type === 'movie'
+                    ? `https://player.vidzee.wtf/api/server?id=${path}&sr=${sr}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://player.vidzee.wtf/api/server?id=${showId}&sr=${sr}&ss=${seasonNumber}&ep=${episodeNumber}`;
+                    })();
 
-            return soraFetch(apiUrl)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.url) return null;
-                    const stream = data.url.find(source =>
-                        source.lang?.toLowerCase() === 'english'
+                return soraFetch(apiUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.url) return null;
+                        const stream = data.url.find(source =>
+                            source.lang?.toLowerCase() === 'english'
+                        );
+                        if (!stream) return null;
+
+                        return {
+                            title: `Vidzee - ${data.provider}`,
+                            streamUrl: stream.link,
+                            headers: {
+                                'Origin': 'https://player.vidzee.wtf',
+                                'Referer': data.headers?.Referer || ''
+                            }
+                        };
+                    })
+                    .catch(() => null);
+            });
+
+            const results = await Promise.allSettled(vidzeePromises);
+            return results
+                .filter(r => r.status === 'fulfilled' && r.value)
+                .map(r => r.value);
+        };
+
+        // --- VixSrc fetch ---
+        const fetchVixSrc = async () => {
+            try {
+                const vixsrcUrl = type === 'movie'
+                    ? `https://vixsrc.to/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://vixsrc.to/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                    })();
+                const html = await soraFetch(vixsrcUrl).then(res => res.text());
+
+                let vixStreams = [];
+
+                if (html.includes('window.masterPlaylist')) {
+                    const urlMatch = html.match(/url:\s*['"]([^'"]+)['"]/);
+                    const tokenMatch = html.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/);
+                    const expiresMatch = html.match(/['"]?expires['"]?\s*:\s*['"]([^'"]+)['"]/);
+
+                    if (urlMatch && tokenMatch && expiresMatch) {
+                        const baseUrl = urlMatch[1];
+                        const token = tokenMatch[1];
+                        const expires = expiresMatch[1];
+
+                        const streamUrl = baseUrl.includes('?b=1')
+                            ? `${baseUrl}&token=${token}&expires=${expires}&h=1&lang=en`
+                            : `${baseUrl}?token=${token}&expires=${expires}&h=1&lang=en`;
+
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl,
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
+                }
+
+                if (!vixStreams.length) {
+                    const m3u8Match = html.match(/(https?:\/\/[^'"\s]+\.m3u8[^'"\s]*)/);
+                    if (m3u8Match) {
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl: m3u8Match[1],
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
+                }
+
+                if (!vixStreams.length) {
+                    const scriptMatches = html.match(/<script[^>]*>(.*?)<\/script>/gs);
+                    if (scriptMatches) {
+                        for (const script of scriptMatches) {
+                            const streamMatch = script.match(/['"]?(https?:\/\/[^'"\s]+(?:\.m3u8|playlist)[^'"\s]*)/);
+                            if (streamMatch) {
+                                vixStreams.push({
+                                    title: `VixSrc`,
+                                    streamUrl: streamMatch[1],
+                                    headers: { Referer: "https://vixsrc.to/" }
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!vixStreams.length) {
+                    const videoMatch = html.match(/(?:src|source|url)['"]?\s*[:=]\s*['"]?(https?:\/\/[^'"\s]+(?:\.mp4|\.m3u8|\.mpd)[^'"\s]*)/);
+                    if (videoMatch) {
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl: videoMatch[2] || videoMatch[1],
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
+                }
+
+                return vixStreams;
+            } catch {
+                console.log('VixSrc failed silently');
+                return [];
+            }
+        };
+
+        // --- XPrime fetches ---
+        const fetchXPrime = async () => {
+            const xprimeStreams = [];
+            const xprimeBaseUrl = 'https://xprime.tv/watch';
+            const xprimeServers = [
+                'primebox', 'phoenix', 'primenet', 'kraken', 'harbour', 'volkswagen', 'fendi'
+            ];
+
+            let xprimeMetadata;
+            if (type === 'movie') {
+                const metadataRes = await soraFetch(`https://api.themoviedb.org/3/movie/${path}?api_key=84259f99204eeb7d45c7e3d8e36c6123`);
+                xprimeMetadata = await metadataRes.json();
+
+                for (const server of xprimeServers) {
+                    let apiUrl = '';
+                    const name = xprimeMetadata.title || xprimeMetadata.name || xprimeMetadata.original_title || xprimeMetadata.original_name || '';
+
+                    if (server === xprimeServers[0]) {
+                        if (xprimeMetadata.release_date) {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&fallback_year=${xprimeMetadata.release_date.split('-')[0]}`;
+                        } else {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}`;
+                        }
+                    } else {
+                        if (xprimeMetadata.release_date) {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&year=${xprimeMetadata.release_date.split('-')[0]}&id=${path}&imdb=${xprimeMetadata.imdb_id || ''}`;
+                        } else {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&id=${path}&imdb=${xprimeMetadata.imdb_id || ''}`;
+                        }
+                    }
+
+                    xprimeStreams.push(
+                        soraFetch(apiUrl)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (server === 'volkswagen' && data?.url) {
+                                    return {
+                                        title: `XPrime - ${server} (German)`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
+                                } else if (server === 'fendi' && data?.url) {
+                                    if (data?.subtitles?.length) {
+                                        const engSub = data.subtitles.find(sub => sub.language === 'eng' && (sub.name === 'English' || sub.name === 'English [CC]'));
+                                        if (engSub) {
+                                            subtitles = engSub.url;
+                                        }
+                                    }
+                                    return {
+                                        title: `XPrime - ${server} (Italian)`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
+                                } else if (data?.url) {
+                                    if (data?.subtitle) subtitles = data.subtitle;
+                                    return {
+                                        title: `XPrime - ${server}`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
+                                }
+                                return null;
+                            })
+                            .catch(() => null)
                     );
-                    if (!stream) return null;
+                }
+            } else if (type === 'tv') {
+                const [showId, season, episode] = path.split('/');
+                const metadataRes = await soraFetch(`https://api.themoviedb.org/3/tv/${showId}?api_key=84259f99204eeb7d45c7e3d8e36c6123`);
+                xprimeMetadata = await metadataRes.json();
 
-                    return {
-                        title: `Vidzee - ${data.provider}`,
-                        streamUrl: stream.link,
-                        headers: {
-                            'Origin': 'https://player.vidzee.wtf',
-                            'Referer': data.headers?.Referer || ''
+                for (const server of xprimeServers) {
+                    let apiUrl = '';
+                    const name = xprimeMetadata.title || xprimeMetadata.name || xprimeMetadata.original_title || xprimeMetadata.original_name || '';
+
+                    if (server === xprimeServers[0]) {
+                        if (xprimeMetadata.first_air_date) {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&fallback_year=${xprimeMetadata.first_air_date.split('-')[0]}&season=${season}&episode=${episode}`;
+                        } else {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&season=${season}&episode=${episode}`;
                         }
-                    };
-                })
-                .catch(() => null);
-        });
-
-        const vidzeeResults = await Promise.allSettled(vidzeePromises);
-        
-        for (const result of vidzeeResults) {
-            if (result.status === 'fulfilled' && result.value) {
-                streams.push(result.value);
-            }
-        }
-
-        // --- VixSrc ---
-        try {
-            const vixsrcUrl = type === 'movie'
-                ? `https://vixsrc.to/movie/${path}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://vixsrc.to/tv/${showId}/${seasonNumber}/${episodeNumber}`;
-                })();
-            const html = await soraFetch(vixsrcUrl).then(res => res.text());
-
-            if (html.includes('window.masterPlaylist')) {
-                const urlMatch = html.match(/url:\s*['"]([^'"]+)['"]/);
-                const tokenMatch = html.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/);
-                const expiresMatch = html.match(/['"]?expires['"]?\s*:\s*['"]([^'"]+)['"]/);
-
-                if (urlMatch && tokenMatch && expiresMatch) {
-                    const baseUrl = urlMatch[1];
-                    const token = tokenMatch[1];
-                    const expires = expiresMatch[1];
-
-                    if (baseUrl.includes('?b=1')) {
-                        streams.push({
-                            title: `VixSrc`,
-                            streamUrl: `${baseUrl}&token=${token}&expires=${expires}&h=1&lang=en`,
-                            headers: { Referer: "https://vixsrc.to/" }
-                        });
                     } else {
-                        streams.push({
-                            title: `VixSrc`,
-                            streamUrl: `${baseUrl}?token=${token}&expires=${expires}&h=1&lang=en`,
-                            headers: { Referer: "https://vixsrc.to/" }
-                        });
-                    }
-                }
-            }
-
-            if (!streams) {
-                const m3u8Match = html.match(/(https?:\/\/[^'"\s]+\.m3u8[^'"\s]*)/);
-                if (m3u8Match) {
-                     streams.push({
-                        title: `VixSrc`,
-                        streamUrl: m3u8Match[1],
-                        headers: { Referer: "https://vixsrc.to/" }
-                    });
-                }
-            }
-
-            if (!streams) {
-                const scriptMatches = html.match(/<script[^>]*>(.*?)<\/script>/gs);
-                if (scriptMatches) {
-                    for (const script of scriptMatches) {
-                        const streamMatch = script.match(/['"]?(https?:\/\/[^'"\s]+(?:\.m3u8|playlist)[^'"\s]*)/);
-                        if (streamMatch) {
-                            streams.push({
-                                title: `VixSrc`,
-                                streamUrl: streamMatch[1],
-                                headers: { Referer: "https://vixsrc.to/" }
-                            });
-                            break;
+                        if (xprimeMetadata.first_air_date) {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&year=${xprimeMetadata.first_air_date.split('-')[0]}&id=${showId}&imdb=${xprimeMetadata.imdb_id || ''}&season=${season}&episode=${episode}`;
+                        } else {
+                            apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&id=${showId}&imdb=${xprimeMetadata.imdb_id || ''}&season=${season}&episode=${episode}`;
                         }
                     }
-                }
-            }
 
-            if (!streams) {
-                const videoMatch = html.match(/(?:src|source|url)['"]?\s*[:=]\s*['"]?(https?:\/\/[^'"\s]+(?:\.mp4|\.m3u8|\.mpd)[^'"\s]*)/);
-                if (videoMatch) {
-                    streams.push({
-                        title: `VixSrc`,
-                        streamUrl: videoMatch[2] || videoMatch[1],
-                        headers: { Referer: "https://vixsrc.to/" }
-                    });
-                }
-            }
-        } catch {
-            console.log('VixSrc failed silently');
-        }
-
-        // --- XPrime Fetches (Parallel) ---
-        const xprimeBaseUrl = 'https://xprime.tv/watch';
-        let xprimeApiUrls = [];
-
-        if (type === 'movie') {
-            xprimeApiUrls.push(`${xprimeBaseUrl}/${path}`);
-        } else if (type === 'tv') {
-            // path: showId/season/episode
-            const [showId, season, episode] = path.split('/');
-            xprimeApiUrls.push(`${xprimeBaseUrl}/${showId}/${season}/${episode}`);
-        }
-
-        const xprimeServers = [
-            'primebox', 'phoenix', 'primenet', 'kraken', 'harbour', 'volkswagen', 'fendi'
-        ];
-
-        // For each server, prepare the appropriate XPrime backend API URLs
-        const xprimeFetchPromises = [];
-
-        // --- Fetch TMDB metadata for XPrime ---
-        let xprimeMetadata;
-        if (type === 'movie') {
-            const metadataRes = await soraFetch(`https://api.themoviedb.org/3/movie/${path}?api_key=84259f99204eeb7d45c7e3d8e36c6123`);
-            xprimeMetadata = await metadataRes.json();
-
-            for (const server of xprimeServers) {
-                let apiUrl = '';
-                const name = xprimeMetadata.title || xprimeMetadata.name || xprimeMetadata.original_title || xprimeMetadata.original_name || '';
-
-                if (server === xprimeServers[0]) {
-                    if (xprimeMetadata.release_date) {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&fallback_year=${xprimeMetadata.release_date.split('-')[0]}`;
-                    } else {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}`;
-                    }
-                } else {
-                    if (xprimeMetadata.release_date) {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&year=${xprimeMetadata.release_date.split('-')[0]}&id=${path}&imdb=${xprimeMetadata.imdb_id || ''}`;
-                    } else {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&id=${path}&imdb=${xprimeMetadata.imdb_id || ''}`;
-                    }
-                }
-
-                xprimeFetchPromises.push(
-                    soraFetch(apiUrl)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (server === 'volkswagen' && data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server} (German)`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            } else if (server === 'fendi' && data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server} (Italian)`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            } else if (data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server}`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            }
-
-                            // subtitles from fendi
-                            if (server === 'fendi' && data?.subtitles?.length) {
-                                const engSub = data.subtitles.find(sub => sub.language === 'eng' && (sub.name === 'English' || sub.name === 'English [CC]'));
-                                if (engSub) {
-                                    subtitles = engSub.url;
+                    xprimeStreams.push(
+                        soraFetch(apiUrl)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (server === 'volkswagen' && data?.url) {
+                                    return {
+                                        title: `XPrime - ${server} (German)`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
+                                } else if (server === 'fendi' && data?.url) {
+                                    if (data?.subtitles?.length) {
+                                        const engSub = data.subtitles.find(sub => sub.language === 'eng' && (sub.name === 'English' || sub.name === 'English [CC]'));
+                                        if (engSub) {
+                                            subtitles = engSub.url;
+                                        }
+                                    }
+                                    return {
+                                        title: `XPrime - ${server} (Italian)`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
+                                } else if (data?.url) {
+                                    if (data?.subtitle) subtitles = data.subtitle;
+                                    return {
+                                        title: `XPrime - ${server}`,
+                                        streamUrl: data.url,
+                                        headers: { Referer: "https://xprime.tv/" }
+                                    };
                                 }
-                            } else if (data?.subtitle) {
-                                subtitles = data.subtitle;
-                            }
-                        })
-                        .catch(() => { })
-                );
-            }
-        } else if (type === 'tv') {
-            const [showId, season, episode] = path.split('/');
-            const metadataRes = await soraFetch(`https://api.themoviedb.org/3/tv/${showId}?api_key=84259f99204eeb7d45c7e3d8e36c6123`);
-            xprimeMetadata = await metadataRes.json();
-
-            for (const server of xprimeServers) {
-                let apiUrl = '';
-                const name = xprimeMetadata.title || xprimeMetadata.name || xprimeMetadata.original_title || xprimeMetadata.original_name || '';
-
-                if (server === xprimeServers[0]) {
-                    if (xprimeMetadata.first_air_date) {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&fallback_year=${xprimeMetadata.first_air_date.split('-')[0]}&season=${season}&episode=${episode}`;
-                    } else {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&season=${season}&episode=${episode}`;
-                    }
-                } else {
-                    if (xprimeMetadata.first_air_date) {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&year=${xprimeMetadata.first_air_date.split('-')[0]}&id=${showId}&imdb=${xprimeMetadata.imdb_id || ''}&season=${season}&episode=${episode}`;
-                    } else {
-                        apiUrl = `https://backend.xprime.tv/${server}?name=${encodeURIComponent(name)}&id=${showId}&imdb=${xprimeMetadata.imdb_id || ''}&season=${season}&episode=${episode}`;
-                    }
+                                return null;
+                            })
+                            .catch(() => null)
+                    );
                 }
-
-                xprimeFetchPromises.push(
-                    soraFetch(apiUrl)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (server === 'volkswagen' && data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server} (German)`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            } else if (server === 'fendi' && data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server} (Italian)`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            } else if (data?.url) {
-                                streams.push({
-                                    title: `XPrime - ${server}`,
-                                    streamUrl: data.url,
-                                    headers: { Referer: "https://xprime.tv/" }
-                                });
-                            }
-
-                            // subtitles from fendi
-                            if (server === 'fendi' && data?.subtitles?.length) {
-                                const engSub = data.subtitles.find(sub => sub.language === 'eng' && (sub.name === 'English' || sub.name === 'English [CC]'));
-                                if (engSub) {
-                                    subtitles = engSub.url;
-                                }
-                            } else if (data?.subtitle) {
-                                subtitles = data.subtitle;
-                            }
-                        })
-                        .catch(() => { })
-                );
             }
-        }
 
-        // Await all XPrime fetches
-        await Promise.allSettled(xprimeFetchPromises);
+            const settledResults = await Promise.allSettled(xprimeStreams);
+            return settledResults
+                .filter(r => r.status === 'fulfilled' && r.value)
+                .map(r => r.value);
+        };
 
-        // --- RgShows ---
-        try {
-            const rgShowsUrl = type === 'movie'
-                ? `https://api.rgshows.me/main/movie/${path}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://api.rgshows.me/main/tv/${showId}/${seasonNumber}/${episodeNumber}`;
-                })();
+        // --- RgShows fetch ---
+        const fetchRgShows = async () => {
+            try {
+                const rgShowsUrl = type === 'movie'
+                    ? `https://api.rgshows.me/main/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://api.rgshows.me/main/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                    })();
 
-            const headers = {
-                'Origin': 'https://www.vidsrc.wtf',
-                'Referer': 'https://www.vidsrc.wtf/'
-            };
+                const headers = {
+                    'Origin': 'https://www.vidsrc.wtf',
+                    'Referer': 'https://www.vidsrc.wtf/'
+                };
 
-            const rgShowsResponse = await soraFetch(rgShowsUrl, { headers });
-            const rgShowsData = await rgShowsResponse.json();
+                const rgShowsResponse = await soraFetch(rgShowsUrl, { headers });
+                const rgShowsData = await rgShowsResponse.json();
 
-            if (rgShowsData && rgShowsData.stream) {
-                streams.push({
-                    title: `RgShows`,
-                    streamUrl: rgShowsData.stream.url,
-                    headers: { Referer: "https://www.vidsrc.wtf/" }
-                });
+                if (rgShowsData && rgShowsData.stream) {
+                    return [{
+                        title: `RgShows`,
+                        streamUrl: rgShowsData.stream.url,
+                        headers: { Referer: "https://www.vidsrc.wtf/" }
+                    }];
+                }
+            } catch (e) {
+                console.log('RgShows fetch failed silently:', e);
             }
-        } catch (e) {
-            console.log('RgShows fetch failed silently:', e);
-        }
+            return [];
+        };
 
-        // --- Vidapi.xyz ---
-        try {
-            const vidapiUrl = type === 'movie'
-                ? `https://vidapi.xyz/embed/movie/${path}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://vidapi.xyz/embed/tv/${showId}&s=${seasonNumber}&e=${episodeNumber}`;
-                })();
+        // --- Vidapi fetch ---
+        const fetchVidapi = async () => {
+            try {
+                const vidapiUrl = type === 'movie'
+                    ? `https://vidapi.xyz/embed/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://vidapi.xyz/embed/tv/${showId}&s=${seasonNumber}&e=${episodeNumber}`;
+                    })();
 
-            const headers = { 'Referer': 'https://vidapi.xyz/' };
-            const html = await soraFetch(vidapiUrl, { headers }).then(res => res.text());
+                const headers = { 'Referer': 'https://vidapi.xyz/' };
+                const html = await soraFetch(vidapiUrl, { headers }).then(res => res.text());
 
-            const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/);
-            if (iframeMatch) {
+                const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/);
+                if (!iframeMatch) return [];
+
                 let iframeSrc = iframeMatch[1].trim();
                 if (!iframeSrc.startsWith("http")) {
                     iframeSrc = "https://uqloads.xyz/e/" + iframeSrc;
@@ -461,116 +456,152 @@ async function extractStreamUrl(url) {
                 const iframeHtml = await iframeRes.text();
 
                 const packedScriptMatch = iframeHtml.match(/(eval\(function\(p,a,c,k,e,d[\s\S]*?)<\/script>/);
-                if (packedScriptMatch) {
-                    const unpackedScript = unpack(packedScriptMatch[1]);
+                if (!packedScriptMatch) return [];
 
-                    const streamRegex = /"hls[1-9]":\s*"([^"]+)"/g;
-                    let match;
-                    const vidapiStreamList = [];
+                const unpackedScript = unpack(packedScriptMatch[1]);
 
-                    while ((match = streamRegex.exec(unpackedScript)) !== null) {
-                        const streamUrl = match[1].trim();
+                const streamRegex = /"hls[1-9]":\s*"([^"]+)"/g;
+                let match;
+                const vidapiStreamList = [];
 
-                        if (
-                            streamUrl.startsWith("https://") &&
-                            (streamUrl.includes(".m3u8") || streamUrl.includes(".mp4"))
-                        ) {
-                            vidapiStreamList.push(streamUrl);
-                        } else {
-                            console.log("Skipping invalid or relative Vidapi stream:", streamUrl);
-                        }
-                    }
+                while ((match = streamRegex.exec(unpackedScript)) !== null) {
+                    const streamUrl = match[1].trim();
 
-                    if (vidapiStreamList.length === 1) {
-                        streams.push({
-                            title: 'Vidapi',
-                            streamUrl: vidapiStreamList[0],
-                            headers
-                        });
+                    if (
+                        streamUrl.startsWith("https://") &&
+                        (streamUrl.includes(".m3u8") || streamUrl.includes(".mp4"))
+                    ) {
+                        vidapiStreamList.push(streamUrl);
                     } else {
-                        vidapiStreamList.forEach((url, i) => {
-                            streams.push({
-                                title: `Vidapi - ${i + 1}`,
-                                streamUrl: url,
-                                headers
-                            });
-                        });
+                        console.log("Skipping invalid or relative Vidapi stream:", streamUrl);
                     }
                 }
+
+                if (vidapiStreamList.length === 1) {
+                    return [{
+                        title: 'Vidapi',
+                        streamUrl: vidapiStreamList[0],
+                        headers
+                    }];
+                } else {
+                    return vidapiStreamList.map((url, i) => ({
+                        title: `Vidapi - ${i + 1}`,
+                        streamUrl: url,
+                        headers
+                    }));
+                }
+            } catch (e) {
+                console.log("Vidapi stream extraction failed silently:", e);
+                return [];
             }
-        } catch (e) {
-            console.log("Vidapi stream extraction failed silently:", e);
-        }
+        };
 
-        // --- CloudStream Pro (silent fallback) ---
-        try {
-            const cloudStreamUrl = type === 'movie'
-                ? `https://cdn.moviesapi.club/embed/movie/${path}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://cdn.moviesapi.club/embed/tv/${showId}/${seasonNumber}/${episodeNumber}`;
-                })();
+        // --- CloudStream Pro fetch ---
+        const fetchCloudStreamPro = async () => {
+            try {
+                const cloudStreamUrl = type === 'movie'
+                    ? `https://cdn.moviesapi.club/embed/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://cdn.moviesapi.club/embed/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                    })();
 
-            const html = await soraFetch(cloudStreamUrl).then(res => res.text());
-            const embedRegex = /<iframe[^>]*src="([^"]+)"[^>]*>/g;
-            const embedUrl = Array.from(html.matchAll(embedRegex), m => m[1].trim()).find(Boolean);
+                const html = await soraFetch(cloudStreamUrl).then(res => res.text());
+                const embedRegex = /<iframe[^>]*src="([^"]+)"[^>]*>/g;
+                const embedUrl = Array.from(html.matchAll(embedRegex), m => m[1].trim()).find(Boolean);
 
-            if (embedUrl) {
+                if (!embedUrl) return [];
+
                 const completedUrl = embedUrl.startsWith('http') ? embedUrl : `https:${embedUrl}`;
                 const html2 = await soraFetch(completedUrl).then(res => res.text());
                 const match2 = html2.match(/src:\s*['"]([^'"]+)['"]/);
 
-                if (match2 && match2[1]) {
-                    const src = `https://cloudnestra.com${match2[1]}`;
-                    const html3 = await soraFetch(src).then(res => res.text());
-                    const match3 = html3.match(/file:\s*['"]([^'"]+)['"]/);
+                if (!match2 || !match2[1]) return [];
 
-                    if (match3 && match3[1]) {
-                        streams.push({
-                            title: "CloudStream Pro",
-                            streamUrl: match3[1],
-                            headers: {}
-                        });
-                    }
+                const src = `https://cloudnestra.com${match2[1]}`;
+                const html3 = await soraFetch(src).then(res => res.text());
+                const match3 = html3.match(/file:\s*['"]([^'"]+)['"]/);
+
+                if (!match3 || !match3[1]) return [];
+
+                return [{
+                    title: "CloudStream Pro",
+                    streamUrl: match3[1],
+                    headers: {}
+                }];
+            } catch (e) {
+                console.log('CloudStream Pro fallback failed silently');
+                return [];
+            }
+        };
+
+        // --- Subtitle fetch ---
+        const fetchSubtitles = async () => {
+            try {
+                const subtitleApiUrl = type === 'movie'
+                    ? `https://sub.wyzie.ru/search?id=${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://sub.wyzie.ru/search?id=${showId}&season=${seasonNumber}&episode=${episodeNumber}`;
+                    })();
+
+                const subtitleTrackResponse = await soraFetch(subtitleApiUrl);
+                const subtitleTrackData = await subtitleTrackResponse.json();
+
+                let subtitleTrack = subtitleTrackData.find(track =>
+                    track.display.includes('English') && ['ASCII', 'UTF-8'].includes(track.encoding)
+                ) || subtitleTrackData.find(track =>
+                    track.display.includes('English') && track.encoding === 'CP1252'
+                ) || subtitleTrackData.find(track =>
+                    track.display.includes('English') && track.encoding === 'CP1250'
+                ) || subtitleTrackData.find(track =>
+                    track.display.includes('English') && track.encoding === 'CP850'
+                );
+
+                if (subtitleTrack) {
+                    return subtitleTrack.url;
                 }
+            } catch {
+                console.log('Subtitle extraction failed silently.');
             }
-        } catch (e) {
-            console.log('CloudStream Pro fallback failed silently');
-        }
+            return "";
+        };
 
-        // --- Subtitles ---
-        let subtitles = "";
-        try {
-            const subtitleApiUrl = type === 'movie'
-                ? `https://sub.wyzie.ru/search?id=${path}`
-                : (() => {
-                    const [showId, seasonNumber, episodeNumber] = path.split('/');
-                    return `https://sub.wyzie.ru/search?id=${showId}&season=${seasonNumber}&episode=${episodeNumber}`;
-                })();
+        // Run all fetches in parallel
+        const [
+            vidzeeStreams,
+            vixSrcStreams,
+            xprimeStreams,
+            rgShowsStreams,
+            vidapiStreams,
+            cloudStreamProStreams,
+            subtitleUrl
+        ] = await Promise.allSettled([
+            fetchVidzee(),
+            fetchVixSrc(),
+            fetchXPrime(),
+            fetchRgShows(),
+            fetchVidapi(),
+            fetchCloudStreamPro(),
+            fetchSubtitles()
+        ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : (Array.isArray(r.value) ? [] : "")));
 
-            const subtitleTrackResponse = await soraFetch(subtitleApiUrl);
-            const subtitleTrackData = await subtitleTrackResponse.json();
+        // Collect streams from all sources
+        streams.push(...(vidzeeStreams || []));
+        streams.push(...(vixSrcStreams || []));
+        streams.push(...(xprimeStreams || []));
+        streams.push(...(rgShowsStreams || []));
+        streams.push(...(vidapiStreams || []));
+        streams.push(...(cloudStreamProStreams || []));
 
-            let subtitleTrack = subtitleTrackData.find(track =>
-                track.display.includes('English') && ['ASCII', 'UTF-8'].includes(track.encoding)
-            ) || subtitleTrackData.find(track =>
-                track.display.includes('English') && track.encoding === 'CP1252'
-            ) || subtitleTrackData.find(track =>
-                track.display.includes('English') && track.encoding === 'CP1250'
-            ) || subtitleTrackData.find(track =>
-                track.display.includes('English') && track.encoding === 'CP850'
-            );
-
-            if (subtitleTrack) {
-                subtitles = subtitleTrack.url;
-            }
-        } catch {
-            console.log('Subtitle extraction failed silently.');
+        if (subtitleUrl) {
+            subtitles = subtitleUrl;
         }
 
         const result = { streams, subtitles };
         console.log('Result:', JSON.stringify(result));
         return JSON.stringify(result);
+
     } catch (error) {
         console.log('Fetch error in extractStreamUrl:', error);
         return JSON.stringify({ streams: [], subtitles: "" });
