@@ -136,10 +136,11 @@ async function extractEpisodes(url) {
 }
 
 // extractStreamUrl(`tv/1396/1/1`);
+extractStreamUrl(`tv/119051/1/2`);
 // extractStreamUrl(`movie/238`);
 
 async function extractStreamUrl(url) {
-    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         const match = url.match(/(movie|tv)\/(.+)/);
@@ -496,6 +497,51 @@ async function extractStreamUrl(url) {
             }
         };
 
+        // --- Vidrock.net ---
+        const fetchVidrock = async () => {
+            try {
+                let vidrockUrl;
+
+                if (type === 'movie') {
+                    // Do nothing
+                    vidrock = `https://vidrock.net/api/movie/${path}`;
+                } else {
+                    // TV format: episode-season-reversedShowId
+                    const [showId, seasonNumber, episodeNumber] = path.split('/');
+                    const transformed = `${episodeNumber}-${seasonNumber}-${showId.split("").reverse().join("")}`;
+                    const encodedOnce = btoa(unescape(encodeURIComponent(transformed)));
+                    const encodedTwice = btoa(encodedOnce);
+
+                    vidrockUrl = `https://vidrock.net/api/tv/${encodedTwice}`;
+                }
+
+                const headers = {
+                    'Referer': 'https://vidrock.net/',
+                    'Origin': 'https://vidrock.net'
+                };
+                const data = await soraFetch(vidrockUrl, { headers }).then(res => res.json());
+
+                if (!data || typeof data !== 'object') return [];
+
+                const vidrockStreamList = Object.entries(data)
+                    .filter(([key, s]) => s?.url && s.language?.toLowerCase() === 'english')
+                    .map(([key, s]) => {
+                        const match = key.match(/source(\d+)/i);
+                        const sourceNum = match ? match[1] : 'Unknown';
+                        return {
+                            title: `Vidrock - ${sourceNum}`,
+                            streamUrl: s.url,
+                            headers
+                        };
+                    });
+
+                return vidrockStreamList;
+            } catch (e) {
+                console.log("Vidrock stream extraction failed silently:", e);
+                return [];
+            }
+        };
+
         // --- CloudStream Pro fetch ---
         const fetchCloudStreamPro = async () => {
             try {
@@ -574,6 +620,7 @@ async function extractStreamUrl(url) {
             xprimeStreams,
             rgShowsStreams,
             vidapiStreams,
+            vidrockStreams,
             cloudStreamProStreams,
             subtitleUrl
         ] = await Promise.allSettled([
@@ -582,6 +629,7 @@ async function extractStreamUrl(url) {
             fetchXPrime(),
             fetchRgShows(),
             fetchVidapi(),
+            fetchVidrock(),
             fetchCloudStreamPro(),
             fetchSubtitles()
         ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : (Array.isArray(r.value) ? [] : "")));
@@ -592,6 +640,7 @@ async function extractStreamUrl(url) {
         streams.push(...(xprimeStreams || []));
         streams.push(...(rgShowsStreams || []));
         streams.push(...(vidapiStreams || []));
+        streams.push(...(vidrockStreams || []));
         streams.push(...(cloudStreamProStreams || []));
 
         if (subtitleUrl) {
