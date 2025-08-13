@@ -1,43 +1,112 @@
+// async function searchResults(keyword) {
+//     try {
+//         const encodedKeyword = encodeURIComponent(keyword);
+//         const responseText = await soraFetch(`https://api.themoviedb.org/3/search/multi?api_key=9801b6b0548ad57581d111ea690c85c8&query=${encodedKeyword}&include_adult=false`);
+//         const data = await responseText.json();
+
+//         const transformedResults = data.results.map(result => {
+//             if(result.media_type === "movie" || result.title) {
+//                 return {
+//                     title: result.title || result.name || result.original_title || result.original_name,
+//                     image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
+//                     href: `movie/${result.id}`
+//                 };
+//             } else if(result.media_type === "tv" || result.name) {
+//                 return {
+//                     title: result.name || result.title || result.original_name || result.original_title,
+//                     image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
+//                     href: `tv/${result.id}/1/1`
+//                 };
+//             } else {
+//                 return {
+//                     title: result.title || result.name || result.original_name || result.original_title || "Untitled",
+//                     image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
+//                     href: `tv/${result.id}/1/1`
+//                 };
+//             }
+//         });
+
+//         console.log('Transformed Results: ' + transformedResults);
+//         return JSON.stringify(transformedResults);
+//     } catch (error) {
+//         console.log('Fetch error in searchResults:' + error);
+//         return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
+//     }
+// }
+
 async function searchResults(keyword) {
     try {
         const encodedKeyword = encodeURIComponent(keyword);
-        const responseText = await soraFetch(`https://api.themoviedb.org/3/search/multi?api_key=9801b6b0548ad57581d111ea690c85c8&query=${encodedKeyword}&include_adult=false`);
-        const data = await responseText.json();
 
-        const transformedResults = data.results.map(result => {
-            if(result.media_type === "movie" || result.title) {
-                return {
-                    title: result.title || result.name || result.original_title || result.original_name,
-                    image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
-                    href: `movie/${result.id}`
-                };
-            } else if(result.media_type === "tv" || result.name) {
-                return {
-                    title: result.name || result.title || result.original_name || result.original_title,
-                    image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
-                    href: `tv/${result.id}/1/1`
-                };
-            } else {
-                return {
-                    title: result.title || result.name || result.original_name || result.original_title || "Untitled",
-                    image: `https://image.tmdb.org/t/p/w500${result.poster_path}`,
-                    href: `tv/${result.id}/1/1`
-                };
+        // Fetch AniList & TMDB in parallel
+        const [aniRes, tmdbRes] = await Promise.all([
+            soraFetch(`https://sudatchi-api.vercel.app/api/search?q=${encodedKeyword}`).then(r => r.json()),
+            soraFetch(`https://api.themoviedb.org/3/search/multi?api_key=9801b6b0548ad57581d111ea690c85c8&query=${encodedKeyword}&include_adult=false`).then(r => r.json())
+        ]);
+
+        // Transform AniList results
+        const aniListResults = aniRes.media.map(result => ({
+            id: result.id, // AniList ID
+            title: result.title.english || result.title.romaji || result.title.native,
+            image: result.coverImage.large || result.coverImage.extraLarge || result.coverImage.medium,
+            type: "anime"
+        }));
+
+        // Transform TMDB results
+        const tmdbResults = tmdbRes.results.map(result => ({
+            id: result.id, // TMDB ID
+            title: result.title || result.name || result.original_title || result.original_name || "Untitled",
+            image: result.poster_path ? `https://image.tmdb.org/t/p/w500${result.poster_path}` : "",
+            type: result.media_type
+        }));
+
+        // Helper: normalize title
+        const normalize = str => str.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+        // Match and merge results
+        const matchedResults = tmdbResults.map(tmdbItem => {
+            const match = aniListResults.find(ani => normalize(ani.title) === normalize(tmdbItem.title));
+            const anilistId = match ? match.id : "";
+            let href;
+            
+            if (tmdbItem.type === "movie") {
+                href = `movie/${tmdbItem.id}${anilistId ? `|${anilistId}` : "noAnilistId"}`;
+            } else if (tmdbItem.type === "tv") {
+                href = `tv/${tmdbItem.id}/1/1${anilistId ? `|${anilistId}` : "noAnilistId"}`;
             }
+
+            return {
+                title: tmdbItem.title,
+                image: tmdbItem.image,
+                href
+            };
         });
 
-        console.log('Transformed Results: ' + transformedResults);
-        return JSON.stringify(transformedResults);
+        console.log("Matched Results:", matchedResults);
+        return JSON.stringify(matchedResults);
+
     } catch (error) {
-        console.log('Fetch error in searchResults:' + error);
-        return JSON.stringify([{ title: 'Error', image: '', href: '' }]);
+        console.error("Fetch error in searchResults:", error);
+        return JSON.stringify([{ title: "Error", image: "", href: "" }]);
     }
 }
 
+// searchResults('one piece');
+// extractDetails("tv/37854/1/1|21");
+// extractEpisodes("tv/37854/1/1|21");
+// extractStreamUrl("tv/37854/1/2|21/2");
+
+// searchResults("clannad");
+// extractDetails("tv/24835/1/1|2167");
+// extractEpisodes("tv/24835/1/1|2167");
+extractStreamUrl("tv/24835/1/1|2167/1");
+
 async function extractDetails(url) {
+    const [href, anilistId] = url.split("|");
+
     try {
-        if(url.includes('movie')) {
-            const match = url.match(/movie\/([^\/]+)/);
+        if(href.includes('movie')) {
+            const match = href.match(/movie\/([^\/]+)/);
             if (!match) throw new Error("Invalid URL format");
 
             const movieId = match[1];
@@ -51,8 +120,8 @@ async function extractDetails(url) {
             }];
 
             return JSON.stringify(transformedResults);
-        } else if(url.includes('tv')) {
-            const match = url.match(/tv\/([^\/]+)/);
+        } else if(href.includes('tv')) {
+            const match = href.match(/tv\/([^\/]+)/);
             if (!match) throw new Error("Invalid URL format");
 
             const showId = match[1];
@@ -81,22 +150,24 @@ async function extractDetails(url) {
 }
 
 async function extractEpisodes(url) {
+    const [href, anilistId] = url.split("|");
+
     try {
-        if(url.includes('movie')) {
-            const match = url.match(/movie\/([^\/]+)/);
+        if(href.includes('movie')) {
+            const match = href.match(/movie\/([^\/]+)/);
             
             if (!match) throw new Error("Invalid URL format");
             
             const movieId = match[1];
             
             const movie = [
-                { href: `movie/${movieId}`, number: 1, title: "Full Movie" }
+                { href: `movie/${movieId}|${anilistId}`, number: 1, title: "Full Movie" }
             ];
 
             console.log(movie);
             return JSON.stringify(movie);
-        } else if(url.includes('tv')) {
-            const match = url.match(/tv\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
+        } else if(href.includes('tv')) {
+            const match = href.match(/tv\/([^\/]+)\/([^\/]+)\/([^\/]+)/);
             
             if (!match) throw new Error("Invalid URL format");
             
@@ -116,7 +187,7 @@ async function extractEpisodes(url) {
                 
                 if (seasonData.episodes && seasonData.episodes.length) {
                     const episodes = seasonData.episodes.map(episode => ({
-                        href: `tv/${showId}/${seasonNumber}/${episode.episode_number}`,
+                        href: `tv/${showId}/${seasonNumber}/${episode.episode_number}|${anilistId}/${episode.episode_number}`,
                         number: episode.episode_number,
                         title: episode.name || ""
                     }));
@@ -140,10 +211,12 @@ async function extractEpisodes(url) {
 // extractStreamUrl(`movie/238`);
 
 async function extractStreamUrl(url) {
-    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+
+    const [href, anilistHref] = url.split("|");
 
     try {
-        const match = url.match(/(movie|tv)\/(.+)/);
+        const match = href.match(/(movie|tv)\/(.+)/);
         if (!match) throw new Error('Invalid URL format');
         const [, type, path] = match;
 
@@ -186,87 +259,6 @@ async function extractStreamUrl(url) {
             return results
                 .filter(r => r.status === 'fulfilled' && r.value)
                 .map(r => r.value);
-        };
-
-        // --- VixSrc fetch ---
-        const fetchVixSrc = async () => {
-            try {
-                const vixsrcUrl = type === 'movie'
-                    ? `https://vixsrc.to/movie/${path}`
-                    : (() => {
-                        const [showId, seasonNumber, episodeNumber] = path.split('/');
-                        return `https://vixsrc.to/tv/${showId}/${seasonNumber}/${episodeNumber}`;
-                    })();
-                const html = await soraFetch(vixsrcUrl).then(res => res.text());
-
-                let vixStreams = [];
-
-                if (html.includes('window.masterPlaylist')) {
-                    const urlMatch = html.match(/url:\s*['"]([^'"]+)['"]/);
-                    const tokenMatch = html.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/);
-                    const expiresMatch = html.match(/['"]?expires['"]?\s*:\s*['"]([^'"]+)['"]/);
-
-                    if (urlMatch && tokenMatch && expiresMatch) {
-                        const baseUrl = urlMatch[1];
-                        const token = tokenMatch[1];
-                        const expires = expiresMatch[1];
-
-                        const streamUrl = baseUrl.includes('?b=1')
-                            ? `${baseUrl}&token=${token}&expires=${expires}&h=1&lang=en`
-                            : `${baseUrl}?token=${token}&expires=${expires}&h=1&lang=en`;
-
-                        vixStreams.push({
-                            title: `VixSrc`,
-                            streamUrl,
-                            headers: { Referer: "https://vixsrc.to/" }
-                        });
-                    }
-                }
-
-                if (!vixStreams.length) {
-                    const m3u8Match = html.match(/(https?:\/\/[^'"\s]+\.m3u8[^'"\s]*)/);
-                    if (m3u8Match) {
-                        vixStreams.push({
-                            title: `VixSrc`,
-                            streamUrl: m3u8Match[1],
-                            headers: { Referer: "https://vixsrc.to/" }
-                        });
-                    }
-                }
-
-                if (!vixStreams.length) {
-                    const scriptMatches = html.match(/<script[^>]*>(.*?)<\/script>/gs);
-                    if (scriptMatches) {
-                        for (const script of scriptMatches) {
-                            const streamMatch = script.match(/['"]?(https?:\/\/[^'"\s]+(?:\.m3u8|playlist)[^'"\s]*)/);
-                            if (streamMatch) {
-                                vixStreams.push({
-                                    title: `VixSrc`,
-                                    streamUrl: streamMatch[1],
-                                    headers: { Referer: "https://vixsrc.to/" }
-                                });
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!vixStreams.length) {
-                    const videoMatch = html.match(/(?:src|source|url)['"]?\s*[:=]\s*['"]?(https?:\/\/[^'"\s]+(?:\.mp4|\.m3u8|\.mpd)[^'"\s]*)/);
-                    if (videoMatch) {
-                        vixStreams.push({
-                            title: `VixSrc`,
-                            streamUrl: videoMatch[2] || videoMatch[1],
-                            headers: { Referer: "https://vixsrc.to/" }
-                        });
-                    }
-                }
-
-                return vixStreams;
-            } catch {
-                console.log('VixSrc failed silently');
-                return [];
-            }
         };
 
         // --- XPrime fetches ---
@@ -401,35 +393,85 @@ async function extractStreamUrl(url) {
                 .map(r => r.value);
         };
 
-        // --- RgShows fetch ---
-        const fetchRgShows = async () => {
+        // --- VixSrc fetch ---
+        const fetchVixSrc = async () => {
             try {
-                const rgShowsUrl = type === 'movie'
-                    ? `https://api.rgshows.me/main/movie/${path}`
+                const vixsrcUrl = type === 'movie'
+                    ? `https://vixsrc.to/movie/${path}`
                     : (() => {
                         const [showId, seasonNumber, episodeNumber] = path.split('/');
-                        return `https://api.rgshows.me/main/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                        return `https://vixsrc.to/tv/${showId}/${seasonNumber}/${episodeNumber}`;
                     })();
+                const html = await soraFetch(vixsrcUrl).then(res => res.text());
 
-                const headers = {
-                    'Origin': 'https://www.vidsrc.wtf',
-                    'Referer': 'https://www.vidsrc.wtf/'
-                };
+                let vixStreams = [];
 
-                const rgShowsResponse = await soraFetch(rgShowsUrl, { headers });
-                const rgShowsData = await rgShowsResponse.json();
+                if (html.includes('window.masterPlaylist')) {
+                    const urlMatch = html.match(/url:\s*['"]([^'"]+)['"]/);
+                    const tokenMatch = html.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/);
+                    const expiresMatch = html.match(/['"]?expires['"]?\s*:\s*['"]([^'"]+)['"]/);
 
-                if (rgShowsData && rgShowsData.stream) {
-                    return [{
-                        title: `RgShows`,
-                        streamUrl: rgShowsData.stream.url,
-                        headers: { Referer: "https://www.vidsrc.wtf/" }
-                    }];
+                    if (urlMatch && tokenMatch && expiresMatch) {
+                        const baseUrl = urlMatch[1];
+                        const token = tokenMatch[1];
+                        const expires = expiresMatch[1];
+
+                        const streamUrl = baseUrl.includes('?b=1')
+                            ? `${baseUrl}&token=${token}&expires=${expires}&h=1&lang=en`
+                            : `${baseUrl}?token=${token}&expires=${expires}&h=1&lang=en`;
+
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl,
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
                 }
-            } catch (e) {
-                console.log('RgShows fetch failed silently:', e);
+
+                if (!vixStreams.length) {
+                    const m3u8Match = html.match(/(https?:\/\/[^'"\s]+\.m3u8[^'"\s]*)/);
+                    if (m3u8Match) {
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl: m3u8Match[1],
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
+                }
+
+                if (!vixStreams.length) {
+                    const scriptMatches = html.match(/<script[^>]*>(.*?)<\/script>/gs);
+                    if (scriptMatches) {
+                        for (const script of scriptMatches) {
+                            const streamMatch = script.match(/['"]?(https?:\/\/[^'"\s]+(?:\.m3u8|playlist)[^'"\s]*)/);
+                            if (streamMatch) {
+                                vixStreams.push({
+                                    title: `VixSrc`,
+                                    streamUrl: streamMatch[1],
+                                    headers: { Referer: "https://vixsrc.to/" }
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!vixStreams.length) {
+                    const videoMatch = html.match(/(?:src|source|url)['"]?\s*[:=]\s*['"]?(https?:\/\/[^'"\s]+(?:\.mp4|\.m3u8|\.mpd)[^'"\s]*)/);
+                    if (videoMatch) {
+                        vixStreams.push({
+                            title: `VixSrc`,
+                            streamUrl: videoMatch[2] || videoMatch[1],
+                            headers: { Referer: "https://vixsrc.to/" }
+                        });
+                    }
+                }
+
+                return vixStreams;
+            } catch {
+                console.log('VixSrc failed silently');
+                return [];
             }
-            return [];
         };
 
         // --- Vidapi fetch ---
@@ -497,7 +539,39 @@ async function extractStreamUrl(url) {
             }
         };
 
+        // --- RgShows fetch ---
+        const fetchRgShows = async () => {
+            try {
+                const rgShowsUrl = type === 'movie'
+                    ? `https://api.rgshows.me/main/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://api.rgshows.me/main/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                    })();
+
+                const headers = {
+                    'Origin': 'https://www.vidsrc.wtf',
+                    'Referer': 'https://www.vidsrc.wtf/'
+                };
+
+                const rgShowsResponse = await soraFetch(rgShowsUrl, { headers });
+                const rgShowsData = await rgShowsResponse.json();
+
+                if (rgShowsData && rgShowsData.stream) {
+                    return [{
+                        title: `RgShows`,
+                        streamUrl: rgShowsData.stream.url,
+                        headers: { Referer: "https://www.vidsrc.wtf/" }
+                    }];
+                }
+            } catch (e) {
+                console.log('RgShows fetch failed silently:', e);
+            }
+            return [];
+        };
+
         // --- Vidnest.fun ---
+        // --- Movies and TV shows ---
         const fetchVidnest = async () => {
             try {
                 const vidnestUrl = type === 'movie'
@@ -513,16 +587,19 @@ async function extractStreamUrl(url) {
                 };
                 const data = await soraFetch(vidnestUrl, { headers }).then(res => res.json());
 
-                const vidnestStreamList = data.sources.map(source => source.file);
+                if (!data?.sources || !Array.isArray(data.sources)) {
+                    return [];
+                }
+                const vidnestStreamList = data.sources.map(source => source.file).filter(Boolean);
 
-                if (vidnestStreamList.length === 1) {
+                if (vidnestStreamList?.length === 1) {
                     return [{
                         title: 'Vidnest',
                         streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${vidnestStreamList[0]}`,
                         headers
                     }];
                 } else {
-                    return vidnestStreamList.map((url, i) => ({
+                    return vidnestStreamList?.map((url, i) => ({
                         title: `Vidnest - ${i + 1}`,
                         streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${url}`,
                         headers
@@ -534,6 +611,91 @@ async function extractStreamUrl(url) {
             }
         };
 
+        // --- Vidnest.fun ---
+        // --- Anime ---
+        const fetchVidnestAnime = async () => {
+            try {
+                // Add at the beginning:
+                if (!anilistHref) {
+                    console.log("No anilist href provided for anime content");
+                    return [];
+                }
+
+                const [anilistId, episodeNumber] = anilistHref.split('/');
+
+                const hosts = ['hd-1', 'hd-2', 'hd-3', 'shiro', 'miko', 'animez', 'zaza'];
+                const types = ['sub', 'dub'];
+
+                const headers = {
+                    'Referer': 'https://vidnest.fun/',
+                    'Origin': 'https://vidnest.fun'
+                };
+
+                // let vidnestAnimeStreamList = [];
+
+                // for (const host of hosts) {
+                //     for (const type of types) {
+                //         const url = `https://backend.xaiby.sbs/sources?id=${anilistId}&ep=${episodeNumber}&host=${host}&type=${type}`;
+                //         const data = await soraFetch(url, { headers }).then(res => res.json());
+                //         if (data?.sources?.url) {
+                //             vidnestAnimeStreamList.push(`https://proxy-2.madaraverse.online/proxy?url=${data.sources.url}`);
+                //         }
+                //     }
+                // }
+
+                // return vidnestAnimeStreamList?.map((url, i) => ({
+                //     title: `Vidnest - ${i + 1}`,
+                //     streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${url}`,
+                //     headers
+                // }));
+
+                // Build all requests
+                const requests = [];
+                for (const host of hosts) {
+                    if (host === 'miko') {
+                        for (const type of types) {
+                            const url = `https://backend.xaiby.sbs/sources?id=${anilistId}&ep=${episodeNumber}&host=${host}&type=${type}`;
+                            requests.push(
+                                soraFetch(url, { headers })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        if (!data?.sources?.url) return null;
+                                        return {
+                                            title: `${host.toUpperCase()} - ${type.toUpperCase()}`,
+                                            streamUrl: `${data.sources.url}`,
+                                            headers: { Referer: data.sources?.headers?.Referer || 'https://vidnest.fun/' }
+                                        };
+                                    })
+                                    .catch(() => null)
+                            );
+                        }
+                    }
+                    for (const type of types) {
+                        const url = `https://backend.xaiby.sbs/sources?id=${anilistId}&ep=${episodeNumber}&host=${host}&type=${type}`;
+                        requests.push(
+                            soraFetch(url, { headers })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (!data?.sources?.url) return null;
+                                    return {
+                                        title: `${host.toUpperCase()} - ${type.toUpperCase()}`,
+                                        streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${data.sources.url}`,
+                                        headers: { Referer: data.sources?.headers?.Referer || 'https://vidnest.fun/' }
+                                    };
+                                })
+                                .catch(() => null)
+                        );
+                    }
+                }
+
+                const results = await Promise.all(requests);
+                return results.filter(Boolean);
+            } catch (e) {
+                console.log("Vidnest Anime stream extraction failed silently:", e);
+                return [];
+            }
+        };
+
         // --- Vidrock.net ---
         const fetchVidrock = async () => {
             try {
@@ -541,7 +703,7 @@ async function extractStreamUrl(url) {
 
                 if (type === 'movie') {
                     // Do nothing
-                    vidrock = `https://vidrock.net/api/movie/${path}`;
+                    vidrockUrl = `https://vidrock.net/api/movie/${path}`;
                 } else {
                     // TV format: episode-season-reversedShowId
                     const [showId, seasonNumber, episodeNumber] = path.split('/');
@@ -653,21 +815,23 @@ async function extractStreamUrl(url) {
         // Run all fetches in parallel
         const [
             vidzeeStreams,
-            vixSrcStreams,
             xprimeStreams,
-            rgShowsStreams,
+            vixSrcStreams,
             vidapiStreams,
+            rgShowsStreams,
             vidnestStreams,
+            vidnestAnimeStreams,
             vidrockStreams,
             cloudStreamProStreams,
             subtitleUrl
         ] = await Promise.allSettled([
             fetchVidzee(),
-            fetchVixSrc(),
             fetchXPrime(),
-            fetchRgShows(),
+            fetchVixSrc(),
             fetchVidapi(),
+            fetchRgShows(),
             fetchVidnest(),
+            fetchVidnestAnime(),
             fetchVidrock(),
             fetchCloudStreamPro(),
             fetchSubtitles()
@@ -675,11 +839,12 @@ async function extractStreamUrl(url) {
 
         // Collect streams from all sources
         streams.push(...(vidzeeStreams || []));
-        streams.push(...(vixSrcStreams || []));
         streams.push(...(xprimeStreams || []));
-        streams.push(...(rgShowsStreams || []));
+        streams.push(...(vixSrcStreams || []));
         streams.push(...(vidapiStreams || []));
+        streams.push(...(rgShowsStreams || []));
         streams.push(...(vidnestStreams || []));
+        streams.push(...(vidnestAnimeStreams || []));
         streams.push(...(vidrockStreams || []));
         streams.push(...(cloudStreamProStreams || []));
 
@@ -688,9 +853,8 @@ async function extractStreamUrl(url) {
         }
 
         const result = { streams, subtitles };
-        console.log('Result:', JSON.stringify(result));
+        console.log('Result: ' + JSON.stringify(result));
         return JSON.stringify(result);
-
     } catch (error) {
         console.log('Fetch error in extractStreamUrl:', error);
         return JSON.stringify({ streams: [], subtitles: "" });
