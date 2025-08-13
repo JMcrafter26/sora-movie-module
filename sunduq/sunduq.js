@@ -136,11 +136,11 @@ async function extractEpisodes(url) {
 }
 
 // extractStreamUrl(`tv/1396/1/1`);
-extractStreamUrl(`tv/119051/1/2`);
+// extractStreamUrl(`tv/119051/1/2`);
 // extractStreamUrl(`movie/238`);
 
 async function extractStreamUrl(url) {
-    // if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
+    if (!_0xCheck()) return 'https://files.catbox.moe/avolvc.mp4';
 
     try {
         const match = url.match(/(movie|tv)\/(.+)/);
@@ -497,6 +497,43 @@ async function extractStreamUrl(url) {
             }
         };
 
+        // --- Vidnest.fun ---
+        const fetchVidnest = async () => {
+            try {
+                const vidnestUrl = type === 'movie'
+                    ? `https://embed.madaraverse.online/hollymoviehd/movie/${path}`
+                    : (() => {
+                        const [showId, seasonNumber, episodeNumber] = path.split('/');
+                        return `https://embed.madaraverse.online/hollymoviehd/tv/${showId}/${seasonNumber}/${episodeNumber}`;
+                    })();
+
+                const headers = {
+                    'Referer': 'https://vidnest.fun/',
+                    'Origin': 'https://vidnest.fun'
+                };
+                const data = await soraFetch(vidnestUrl, { headers }).then(res => res.json());
+
+                const vidnestStreamList = data.sources.map(source => source.file);
+
+                if (vidnestStreamList.length === 1) {
+                    return [{
+                        title: 'Vidnest',
+                        streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${vidnestStreamList[0]}`,
+                        headers
+                    }];
+                } else {
+                    return vidnestStreamList.map((url, i) => ({
+                        title: `Vidnest - ${i + 1}`,
+                        streamUrl: `https://proxy-2.madaraverse.online/proxy?url=${url}`,
+                        headers
+                    }));
+                }
+            } catch (e) {
+                console.log("Vidnest stream extraction failed silently:", e);
+                return [];
+            }
+        };
+
         // --- Vidrock.net ---
         const fetchVidrock = async () => {
             try {
@@ -620,6 +657,7 @@ async function extractStreamUrl(url) {
             xprimeStreams,
             rgShowsStreams,
             vidapiStreams,
+            vidnestStreams,
             vidrockStreams,
             cloudStreamProStreams,
             subtitleUrl
@@ -629,6 +667,7 @@ async function extractStreamUrl(url) {
             fetchXPrime(),
             fetchRgShows(),
             fetchVidapi(),
+            fetchVidnest(),
             fetchVidrock(),
             fetchCloudStreamPro(),
             fetchSubtitles()
@@ -640,6 +679,7 @@ async function extractStreamUrl(url) {
         streams.push(...(xprimeStreams || []));
         streams.push(...(rgShowsStreams || []));
         streams.push(...(vidapiStreams || []));
+        streams.push(...(vidnestStreams || []));
         streams.push(...(vidrockStreams || []));
         streams.push(...(cloudStreamProStreams || []));
 
